@@ -7,11 +7,11 @@ export default function ProductCard({ to, title, subtitle, price, originalPrice,
       {imageUrl && (
         <div className="aspect-[4/3] bg-surface-dim overflow-hidden relative">
           <img src={imageUrl} alt={title} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" />
-          {purchased && (
+          {/* {purchased && (
             <span className="absolute top-2 right-2 text-[10px] sm:text-xs font-semibold bg-success text-white px-2 py-0.5 rounded-full">
               Purchased
             </span>
-          )}
+          )} */}
         </div>
       )}
       <div className="p-3 sm:p-4 lg:p-5">
@@ -23,15 +23,15 @@ export default function ProductCard({ to, title, subtitle, price, originalPrice,
               </span>
             )}
           </div>
-          {purchased && !imageUrl && (
+          {/* {purchased && !imageUrl && (
             <span className="shrink-0 text-[10px] sm:text-xs font-semibold bg-success/10 text-success px-2 py-0.5 rounded-full">
               Purchased
             </span>
-          )}
+          )} */}
         </div>
         <h3 className="text-sm sm:text-base font-semibold text-text line-clamp-2 mb-0.5 sm:mb-1 group-hover:text-primary transition-colors">{title}</h3>
         {subtitle && <p className="text-xs sm:text-sm text-text-secondary line-clamp-1 mb-2 sm:mb-3">{subtitle}</p>}
-        {purchased ? (
+        {/* {purchased ? (
           <span className="text-xs sm:text-sm font-medium text-success">Owned</span>
         ) : (
           <div className="flex items-center justify-between gap-2">
@@ -40,7 +40,7 @@ export default function ProductCard({ to, title, subtitle, price, originalPrice,
               Buy
             </span>
           </div>
-        )}
+        )} */}
       </div>
     </Link>
   );

@@ -168,7 +168,7 @@ export default function Home() {
                   )}
                   <p className="text-white/30 text-sm mt-4 italic max-w-sm leading-relaxed">"The expert in anything was once a beginner."</p>
                 </div>
-                <Link
+                {/* <Link
                   to="/my-purchases"
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/10 border border-white/10 text-sm font-medium text-white no-underline hover:bg-white/15 transition-all mt-1"
                 >
@@ -176,15 +176,15 @@ export default function Home() {
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="9 18 15 12 9 6" />
                   </svg>
-                </Link>
+                </Link> */}
               </div>
             </div>
           </section>
 
           {/* ── Stats Cards (overlapping hero) ── */}
           <section className="px-5 sm:px-8 lg:px-12 2xl:px-16 -mt-10 sm:-mt-12 relative z-10 mb-8 sm:mb-10 2xl:mb-14">
-            <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 2xl:gap-4">
-              <div className="bg-white rounded-2xl border border-gray-200 p-3.5 sm:p-4 shadow-[0_4px_24px_rgba(0,0,0,0.04)]">
+            <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3 2xl:gap-4">
+              {/* <div className="bg-white rounded-2xl border border-gray-200 p-3.5 sm:p-4 shadow-[0_4px_24px_rgba(0,0,0,0.04)]">
                 <div className="flex items-center gap-2.5 mb-1.5">
                   <div className="w-8 h-8 rounded-lg bg-[#0000C8]/5 flex items-center justify-center flex-shrink-0">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0000C8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -194,7 +194,7 @@ export default function Home() {
                   <div className="text-xl sm:text-2xl font-extrabold text-gray-900 font-display">{totalPurchased}</div>
                 </div>
                 <div className="text-[10px] sm:text-xs text-gray-400 font-medium">Purchased</div>
-              </div>
+              </div> */}
 
               <div className="bg-white rounded-2xl border border-gray-200 p-3.5 sm:p-4 shadow-[0_4px_24px_rgba(0,0,0,0.04)]">
                 <div className="flex items-center gap-2.5 mb-1.5">
@@ -206,9 +206,9 @@ export default function Home() {
                   <div className="text-xl sm:text-2xl font-extrabold text-gray-900 font-display">{packages.length}</div>
                 </div>
                 <div className="text-[10px] sm:text-xs text-gray-400 font-medium">Available Courses</div>
-                {(purchasedPackageIds?.size > 0) && (
+                {/* {(purchasedPackageIds?.size > 0) && (
                   <div className="text-[9px] sm:text-[10px] text-emerald-600 font-semibold mt-0.5">{purchasedPackageIds.size} purchased</div>
-                )}
+                )} */}
               </div>
 
               <div className="bg-white rounded-2xl border border-gray-200 p-3.5 sm:p-4 shadow-[0_4px_24px_rgba(0,0,0,0.04)]">
@@ -221,9 +221,9 @@ export default function Home() {
                   <div className="text-xl sm:text-2xl font-extrabold text-gray-900 font-display">{ebooks.length}</div>
                 </div>
                 <div className="text-[10px] sm:text-xs text-gray-400 font-medium">Available eBooks</div>
-                {(purchasedEbookIds?.size > 0) && (
+                {/* {(purchasedEbookIds?.size > 0) && (
                   <div className="text-[9px] sm:text-[10px] text-emerald-600 font-semibold mt-0.5">{purchasedEbookIds.size} purchased</div>
-                )}
+                )} */}
               </div>
 
               <div className="bg-white rounded-2xl border border-gray-200 p-3.5 sm:p-4 shadow-[0_4px_24px_rgba(0,0,0,0.04)]">
@@ -236,9 +236,9 @@ export default function Home() {
                   <div className="text-xl sm:text-2xl font-extrabold text-gray-900 font-display">{sessions.length}</div>
                 </div>
                 <div className="text-[10px] sm:text-xs text-gray-400 font-medium">Live Sessions</div>
-                {(purchasedSessionIds?.size > 0) && (
+                {/* {(purchasedSessionIds?.size > 0) && (
                   <div className="text-[9px] sm:text-[10px] text-emerald-600 font-semibold mt-0.5">{purchasedSessionIds.size} purchased</div>
-                )}
+                )} */}
               </div>
             </div>
           </section>
@@ -574,12 +574,12 @@ export default function Home() {
                     {session.thumbnail_url ? (
                       <div className="aspect-video bg-gray-50 overflow-hidden relative">
                         <img src={session.thumbnail_url} alt={session.title} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" />
-                        {purchased && <span className="absolute top-2.5 right-2.5 text-[10px] sm:text-xs font-semibold bg-emerald-500 text-white px-2.5 py-0.5 rounded-full">Purchased</span>}
+                        {/* {purchased && <span className="absolute top-2.5 right-2.5 text-[10px] sm:text-xs font-semibold bg-emerald-500 text-white px-2.5 py-0.5 rounded-full">Purchased</span>} */}
                       </div>
                     ) : (
                       <div className="aspect-video bg-gray-50 flex items-center justify-center relative">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="text-gray-200"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-                        {purchased && <span className="absolute top-2.5 right-2.5 text-[10px] sm:text-xs font-semibold bg-emerald-500 text-white px-2.5 py-0.5 rounded-full">Purchased</span>}
+                        {/* {purchased && <span className="absolute top-2.5 right-2.5 text-[10px] sm:text-xs font-semibold bg-emerald-500 text-white px-2.5 py-0.5 rounded-full">Purchased</span>} */}
                       </div>
                     )}
                     <div className="p-5">
@@ -612,7 +612,7 @@ export default function Home() {
                             </div>
                           )}
                         </div>
-                        <div className="shrink-0">
+                        {/* <div className="shrink-0">
                           {purchased ? (
                             <span className="text-[10px] sm:text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">Purchased</span>
                           ) : session.is_free ? (
@@ -620,7 +620,7 @@ export default function Home() {
                           ) : (
                             <span className="text-sm font-bold text-gray-900">{formatPrice(session.price)}</span>
                           )}
-                        </div>
+                        </div> */}
                       </div>
                     </div>
                   </Link>

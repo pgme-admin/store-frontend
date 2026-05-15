@@ -29,7 +29,7 @@ export default function EbookCard({ book, purchased, illustrationIndex = 0, onCl
           </div>
         )}
         {/* Badges */}
-        {purchased && (
+        {/* {purchased && (
           <span className="absolute top-2.5 right-2.5 text-[10px] sm:text-xs font-semibold bg-success text-white px-2 py-0.5 rounded-full shadow-sm">
             Owned
           </span>
@@ -38,7 +38,7 @@ export default function EbookCard({ book, purchased, illustrationIndex = 0, onCl
           <span className="absolute top-2.5 left-2.5 text-[10px] sm:text-xs font-semibold bg-white text-accent-dark px-2 py-0.5 rounded-full shadow-sm">
             {Math.round(((book.original_price - price) / book.original_price) * 100)}% off
           </span>
-        )}
+        )} */}
       </div>
 
       {/* Content */}
@@ -63,7 +63,7 @@ export default function EbookCard({ book, purchased, illustrationIndex = 0, onCl
         )}
 
         {/* Price — pushed to bottom */}
-        <div className="mt-auto pt-2.5 border-t border-border/40 flex items-center justify-between gap-2">
+        {/* <div className="mt-auto pt-2.5 border-t border-border/40 flex items-center justify-between gap-2">
           {purchased ? (
             <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-semibold text-success">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -84,7 +84,7 @@ export default function EbookCard({ book, purchased, illustrationIndex = 0, onCl
               </span>
             </>
           )}
-        </div>
+        </div> */}
       </div>
     </button>
   );

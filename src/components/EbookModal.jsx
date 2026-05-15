@@ -217,7 +217,7 @@ export default function EbookModal({ book: listBook, onClose }) {
                   )}
 
                   {/* Delivery info */}
-                  <div className="flex items-start gap-3 bg-surface-dim border border-border rounded-xl p-3.5 sm:p-4">
+                  {/* <div className="flex items-start gap-3 bg-surface-dim border border-border rounded-xl p-3.5 sm:p-4">
                     <div className="w-9 h-9 sm:w-10 sm:h-10 bg-primary/8 rounded-lg flex items-center justify-center shrink-0">
                       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -229,13 +229,13 @@ export default function EbookModal({ book: listBook, onClose }) {
                       <div className="text-sm font-semibold text-text">Instant Digital Delivery</div>
                       <div className="text-xs text-text-secondary mt-0.5">Available in the PGME app immediately after purchase</div>
                     </div>
-                  </div>
+                  </div> */}
                 </>
               )}
             </div>
 
             {/* Footer CTA */}
-            <div className="relative border-t border-border px-5 sm:px-6 md:px-8 py-5 sm:py-6 bg-white shrink-0">
+            {/* <div className="relative border-t border-border px-5 sm:px-6 md:px-8 py-5 sm:py-6 bg-white shrink-0">
               {purchased ? (
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 bg-success/8 rounded-lg flex items-center justify-center shrink-0">
@@ -265,7 +265,7 @@ export default function EbookModal({ book: listBook, onClose }) {
                   </button>
                 </div>
               )}
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

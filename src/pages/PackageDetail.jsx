@@ -90,7 +90,7 @@ export default function PackageDetail() {
           {/* Main content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Tier selection */}
-            {hasTiers && pkg.tiers.length > 1 && (
+            {/* {hasTiers && pkg.tiers.length > 1 && (
               <div className="bg-white rounded-xl shadow-sm border border-border p-6">
                 <h3 className="text-base font-semibold text-text mb-4 pb-2 border-b border-border">Select Duration</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -113,7 +113,7 @@ export default function PackageDetail() {
                   ))}
                 </div>
               </div>
-            )}
+            )} */}
 
             {/* Description */}
             {pkg.description && (
@@ -144,7 +144,7 @@ export default function PackageDetail() {
           </div>
 
           {/* Sidebar - Desktop sticky CTA */}
-          <div className="hidden lg:block">
+          {/* <div className="hidden lg:block">
             <div className="sticky top-24 bg-white rounded-xl border border-border p-6 shadow-md">
               {purchased ? (
                 <>
@@ -176,12 +176,12 @@ export default function PackageDetail() {
                 </>
               )}
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 
       {/* Mobile sticky bottom CTA */}
-      {purchased ? (
+      {/* {purchased ? (
         <div className="fixed bottom-0 left-0 right-0 glass-strong border-t border-border p-4 safe-area-inset-bottom lg:hidden z-40">
           <div className="max-w-7xl mx-auto flex items-center justify-center gap-2">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-success">
@@ -200,7 +200,7 @@ export default function PackageDetail() {
             </button>
           </div>
         </div>
-      )}
+      )} */}
       <div className="h-20 sm:h-24 lg:hidden" />
     </div>
   );

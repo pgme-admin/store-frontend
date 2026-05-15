@@ -173,7 +173,7 @@ export default function PackageModal({ package: listPkg, onClose }) {
                   )}
 
                   {/* Tier Selector */}
-                  {hasTiers && p.tiers.length > 1 && (
+                  {/* {hasTiers && p.tiers.length > 1 && (
                     <div>
                       <h4 className="text-xs sm:text-sm font-semibold text-text mb-2">Select Duration</h4>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5">
@@ -196,7 +196,7 @@ export default function PackageModal({ package: listPkg, onClose }) {
                         ))}
                       </div>
                     </div>
-                  )}
+                  )} */}
 
                   {/* Package Info */}
                   {(durationDays || p.series_count) && (
@@ -249,7 +249,7 @@ export default function PackageModal({ package: listPkg, onClose }) {
             </div>
 
             {/* Footer CTA */}
-            <div className="relative border-t border-border px-5 sm:px-6 md:px-8 py-5 sm:py-6 bg-white shrink-0">
+            {/* <div className="relative border-t border-border px-5 sm:px-6 md:px-8 py-5 sm:py-6 bg-white shrink-0">
               {purchased ? (
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 bg-success/8 rounded-lg flex items-center justify-center shrink-0">
@@ -279,7 +279,7 @@ export default function PackageModal({ package: listPkg, onClose }) {
                   </button>
                 </div>
               )}
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

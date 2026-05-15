@@ -51,7 +51,7 @@ function UserMenu({ user, logout }) {
             <div className="text-sm font-semibold text-text truncate">{displayName}</div>
             {phone && <div className="text-xs text-text-secondary mt-1">{phone}</div>}
           </div>
-          <div className="py-1.5">
+          {/* <div className="py-1.5">
             <Link
               to="/my-purchases"
               onClick={() => setOpen(false)}
@@ -78,7 +78,7 @@ function UserMenu({ user, logout }) {
               My Invoices
             </Link>
           </div>
-          <div className="border-t border-border-light mx-3"></div>
+          <div className="border-t border-border-light mx-3"></div> */}
           <div className="py-1.5">
             <button
               onClick={() => { setOpen(false); logout(); }}
@@ -131,9 +131,10 @@ export default function Header() {
     { to: '/packages', label: 'Packages' },
     { to: '/ebooks', label: 'eBooks' },
     { to: '/sessions', label: 'Live Sessions' },
-    ...(isAuthenticated
-      ? [{ to: '/my-purchases', label: 'My Purchases' }]
-      : [{ to: '/contact', label: 'Contact' }]),
+    { to: '/contact', label: 'Contact' },
+    // ...(isAuthenticated
+    //   ? [{ to: '/my-purchases', label: 'My Purchases' }]
+    //   : [{ to: '/contact', label: 'Contact' }]),
     { to: '/careers', label: 'Careers' },
   ];
 

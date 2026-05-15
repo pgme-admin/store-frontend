@@ -141,7 +141,7 @@ export default function EbookDetail() {
           </div>
 
           {/* Sidebar - Desktop sticky CTA */}
-          <div className="hidden lg:block">
+          {/* <div className="hidden lg:block">
             <div className="sticky top-24 bg-white rounded-xl border border-border p-6 shadow-md">
               {purchased ? (
                 <>
@@ -172,12 +172,12 @@ export default function EbookDetail() {
                 </>
               )}
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 
       {/* Mobile sticky bottom CTA */}
-      {purchased ? (
+      {/* {purchased ? (
         <div className="fixed bottom-0 left-0 right-0 glass-strong border-t border-border p-4 safe-area-inset-bottom lg:hidden z-40">
           <div className="max-w-7xl mx-auto flex items-center justify-center gap-2">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-success">
@@ -201,7 +201,7 @@ export default function EbookDetail() {
             </button>
           </div>
         </div>
-      )}
+      )} */}
       <div className="h-20 sm:h-24 lg:hidden" />
     </div>
   );

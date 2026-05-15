@@ -52,9 +52,9 @@ export default function App() {
         <Route path="ebooks/:id" element={<EbookDetail />} />
         <Route path="sessions" element={<SessionList />} />
         <Route path="sessions/:id" element={<SessionDetail />} />
-        <Route path="checkout/:type/:id" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
-        <Route path="payment/success" element={<PaymentSuccess />} />
-        <Route path="payment-success" element={<FormPaymentSuccess />} />
+        {/* <Route path="checkout/:type/:id" element={<ProtectedRoute><Checkout /></ProtectedRoute>} /> */}
+        {/* <Route path="payment/success" element={<PaymentSuccess />} /> */}
+        {/* <Route path="payment-success" element={<FormPaymentSuccess />} /> */}
         <Route path="about" element={<About />} />
         <Route path="contact" element={<Contact />} />
         <Route path="careers" element={<Careers />} />
@@ -62,9 +62,9 @@ export default function App() {
         <Route path="refund-policy" element={<RefundPolicy />} />
         <Route path="privacy-policy" element={<PrivacyPolicy />} />
         <Route path="forms" element={<FormSubmissions />} />
-        <Route path="forms/payment-processing" element={<ProtectedRoute><FormPaymentProcessing /></ProtectedRoute>} />
-        <Route path="my-purchases" element={<ProtectedRoute><MyPurchases /></ProtectedRoute>} />
-        <Route path="invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
+        {/* <Route path="forms/payment-processing" element={<ProtectedRoute><FormPaymentProcessing /></ProtectedRoute>} /> */}
+        {/* <Route path="my-purchases" element={<ProtectedRoute><MyPurchases /></ProtectedRoute>} /> */}
+        {/* <Route path="invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} /> */}
         </Route>
       </Routes>
     </SmoothScroll>

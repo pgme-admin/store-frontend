@@ -127,16 +127,16 @@ export default function FormModal({ form, onClose }) {
       }
 
       // Paid form: redirect to checkout with submissionId in URL (survives page reload/redirect)
-      if (submission.payment_required) {
-        onClose();
-        const checkoutParams = new URLSearchParams({
-          submission_id: submission._id,
-          form_title: form.title,
-          payment_amount: String(submission.payment_amount || ''),
-        });
-        navigate(`/checkout/forms/${form._id}?${checkoutParams.toString()}`);
-        return;
-      }
+      // if (submission.payment_required) {
+      //   onClose();
+      //   const checkoutParams = new URLSearchParams({
+      //     submission_id: submission._id,
+      //     form_title: form.title,
+      //     payment_amount: String(submission.payment_amount || ''),
+      //   });
+      //   navigate(`/checkout/forms/${form._id}?${checkoutParams.toString()}`);
+      //   return;
+      // }
 
       // Free form: show success
       setSubmitted(true);
@@ -381,13 +381,13 @@ export default function FormModal({ form, onClose }) {
                     ))}
 
                   {/* Payment info */}
-                  {form.payment_amount > 0 && (
+                  {/* {form.payment_amount > 0 && (
                     <div className="pt-2 border-t border-border/40">
                       <p className="text-xs text-text-tertiary">
                         This form requires a non-refundable payment of <span className="font-semibold text-text-secondary">{'\u20B9'}{form.payment_amount}</span>. You will be redirected to checkout after submission.
                       </p>
                     </div>
-                  )}
+                  )} */}
 
                   {/* Terms and Conditions checkbox */}
                   <label className="flex items-start gap-2.5 cursor-pointer select-none">

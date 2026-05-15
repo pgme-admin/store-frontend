@@ -56,11 +56,12 @@ export default function FormSubmissions() {
     } catch { /* silent */ }
   };
 
-  // Filter forms by search
+  // Filter forms by search (and exclude paid forms entirely)
   const filteredForms = useMemo(() => {
-    if (!search.trim()) return forms;
+    const freeOnly = forms.filter((f) => !f.payment_amount || f.payment_amount === 0);
+    if (!search.trim()) return freeOnly;
     const q = search.toLowerCase();
-    return forms.filter(
+    return freeOnly.filter(
       (f) =>
         f.title?.toLowerCase().includes(q) ||
         f.subject_id?.name?.toLowerCase().includes(q) ||
@@ -234,14 +235,15 @@ export default function FormSubmissions() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                       {subs.map((sub) => {
                         const isPaid = sub.payment_amount && sub.payment_amount > 0;
-                        const statusConfig = {
-                          paid: { label: 'Paid', color: 'bg-success/10 text-success' },
-                          pending: { label: 'Payment Pending', color: 'bg-amber-500/10 text-amber-600' },
-                          none: { label: isPaid ? 'Unpaid' : 'Submitted', color: isPaid ? 'bg-red-500/10 text-red-500' : 'bg-success/10 text-success' },
-                          expired: { label: 'Expired', color: 'bg-red-500/10 text-red-500' },
-                          canceled: { label: 'Cancelled', color: 'bg-text-secondary/10 text-text-secondary' },
-                        };
-                        const status = statusConfig[sub.payment_status] || statusConfig.none;
+                        // const statusConfig = {
+                        //   paid: { label: 'Paid', color: 'bg-success/10 text-success' },
+                        //   pending: { label: 'Payment Pending', color: 'bg-amber-500/10 text-amber-600' },
+                        //   none: { label: isPaid ? 'Unpaid' : 'Submitted', color: isPaid ? 'bg-red-500/10 text-red-500' : 'bg-success/10 text-success' },
+                        //   expired: { label: 'Expired', color: 'bg-red-500/10 text-red-500' },
+                        //   canceled: { label: 'Cancelled', color: 'bg-text-secondary/10 text-text-secondary' },
+                        // };
+                        // const status = statusConfig[sub.payment_status] || statusConfig.none;
+                        const status = { label: 'Submitted', color: 'bg-success/10 text-success' };
 
                         return (
                           <div
@@ -270,9 +272,9 @@ export default function FormSubmissions() {
 
                             <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between">
                               <div className="text-[11px] sm:text-xs text-text-secondary flex flex-wrap gap-3">
-                                {isPaid && (
+                                {/* {isPaid && (
                                   <span className="font-medium text-text">{formatPrice(sub.payment_amount)}</span>
-                                )}
+                                )} */}
                                 <span>{formatDate(sub.submitted_at)}</span>
                               </div>
                             </div>

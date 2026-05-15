@@ -53,7 +53,7 @@ function SessionCard({ session, purchased, onClick }) {
           </div>
         )}
         {/* Badges */}
-        {purchased && (
+        {/* {purchased && (
           <span className="absolute top-3 right-3 text-[10px] sm:text-xs font-semibold bg-success text-white px-2.5 py-1 rounded-full shadow-sm">
             Purchased
           </span>
@@ -62,7 +62,7 @@ function SessionCard({ session, purchased, onClick }) {
           <span className="absolute top-3 right-3 text-[10px] sm:text-xs font-semibold bg-success text-white px-2.5 py-1 rounded-full shadow-sm">
             FREE
           </span>
-        )}
+        )} */}
       </div>
 
       {/* Content */}
@@ -130,7 +130,7 @@ function SessionCard({ session, purchased, onClick }) {
             )}
           </div>
           {/* Price + Buy CTA */}
-          <div className="shrink-0 flex items-center gap-2">
+          {/* <div className="shrink-0 flex items-center gap-2">
             {purchased ? (
               <span className="text-xs font-semibold text-success bg-success/8 px-2.5 py-1 rounded-full">Purchased</span>
             ) : session.is_free ? (
@@ -143,7 +143,7 @@ function SessionCard({ session, purchased, onClick }) {
                 </span>
               </>
             )}
-          </div>
+          </div> */}
         </div>
       </div>
     </button>
@@ -447,7 +447,7 @@ export default function SessionList() {
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5 lg:gap-6 2xl:gap-7 items-start">
-            {forms.map((form) => (
+            {forms.filter((form) => !form.payment_amount || form.payment_amount === 0).map((form) => (
               <FormCard
                 key={form._id}
                 form={form}

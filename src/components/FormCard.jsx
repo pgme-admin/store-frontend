@@ -61,11 +61,11 @@ export default function FormCard({ form, onClick }) {
             <line x1="16" y1="17" x2="8" y2="17" />
           </svg>
           <span>{template?.fields?.length || 0} fields</span>
-          {form.payment_amount > 0 && (
+          {/* {form.payment_amount > 0 && (
             <span className="ml-auto text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
               {'\u20B9'}{form.payment_amount}
             </span>
-          )}
+          )} */}
         </div>
 
         {/* Fill Form CTA */}

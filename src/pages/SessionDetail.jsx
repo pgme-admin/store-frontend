@@ -177,7 +177,7 @@ export default function SessionDetail() {
           </div>
 
           {/* Sidebar - Desktop sticky CTA */}
-          {(!session.is_free || isEnrollmentRequired) && (
+          {/* {(!session.is_free || isEnrollmentRequired) && (
             <div className="hidden lg:block">
               <div className="sticky top-24 bg-white rounded-xl border border-border p-6 shadow-md">
                 {session.is_free && isEnrollmentRequired ? (
@@ -236,12 +236,12 @@ export default function SessionDetail() {
                 )}
               </div>
             </div>
-          )}
+          )} */}
         </div>
       </div>
 
       {/* Mobile sticky bottom CTA */}
-      {(!session.is_free || isEnrollmentRequired) && (
+      {/* {(!session.is_free || isEnrollmentRequired) && (
         <>
           {session.is_free && isEnrollmentRequired ? (
             isEnrolled ? (
@@ -291,7 +291,7 @@ export default function SessionDetail() {
           )}
           <div className="h-20 sm:h-24 lg:hidden" />
         </>
-      )}
+      )} */}
     </div>
   );
 }
