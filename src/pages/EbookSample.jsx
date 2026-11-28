@@ -182,7 +182,8 @@ export default function EbookSample() {
           <div className="max-w-3xl mx-auto">
             <h1 className="text-lg sm:text-xl font-bold text-text mb-2">Free sample of {title}</h1>
             <p className="text-sm text-text-secondary mb-5">
-              {isPdf ? 'This sample is a PDF. If it does not show below, open it in a new tab.' : 'This sample opens as an EPUB file, in the PGME app or any e-book reader.'}
+              {/* No file format (PDF, EPUB) for students: Aviraj, 28 Nov 2026 */}
+              {isPdf ? 'If the sample does not show below, open it in a new tab.' : 'This sample opens in the PGME app or any e-book reader.'}
             </p>
             <div className="flex flex-wrap items-center gap-3 mb-5">
               <button
@@ -194,7 +195,7 @@ export default function EbookSample() {
                   if (sample?.url) window.location.assign(sample.url);
                 }}
               >
-                {opening ? 'Getting the sample…' : isPdf ? 'Open the PDF' : 'Download the sample'}
+                {opening ? 'Getting the sample…' : isPdf ? 'Open the sample' : 'Download the sample'}
               </button>
               {openError && <p role="alert" className="text-sm text-error">{openError}</p>}
             </div>
