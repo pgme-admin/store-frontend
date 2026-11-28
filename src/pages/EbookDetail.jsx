@@ -129,20 +129,7 @@ export default function EbookDetail() {
                     </div>
                   </div>
                 )}
-                {book.ebook_file_format && (
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center text-accent shrink-0">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
-                        <polyline points="13 2 13 9 20 9"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="text-xs text-text-secondary">Format</div>
-                      <div className="text-sm font-semibold text-text">{book.ebook_file_format.toUpperCase()}</div>
-                    </div>
-                  </div>
-                )}
+                {/* No file format (PDF, EPUB) for students: Aviraj, 28 Nov 2026 */}
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-success/10 rounded-xl flex items-center justify-center text-success shrink-0">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
