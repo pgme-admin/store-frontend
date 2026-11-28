@@ -109,13 +109,8 @@ export default function EbookModal({ book: listBook, onClose }) {
                   <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
                   <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
                 </svg>
+                {/* No file format (PDF, EPUB) for students: Aviraj, 28 Nov 2026 */}
                 <span className="text-[11px] sm:text-xs font-medium text-white/60">eBook</span>
-                {b?.ebook_file_format && (
-                  <>
-                    <span className="text-white/30">·</span>
-                    <span className="text-[11px] sm:text-xs font-medium text-white/60">{b.ebook_file_format.toUpperCase()}</span>
-                  </>
-                )}
               </div>
               <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white leading-snug pr-10">{b?.title}</h2>
               {b?.author && (
@@ -166,7 +161,7 @@ export default function EbookModal({ book: listBook, onClose }) {
               ) : (
                 <>
                   {/* Cover + Metadata */}
-                  {(b.thumbnail_url || b.pages || b.ebook_file_format || b.publisher) && (
+                  {(b.thumbnail_url || b.pages || b.publisher) && (
                     <div className="flex gap-4">
                       {b.thumbnail_url && (
                         <img
@@ -182,11 +177,6 @@ export default function EbookModal({ book: listBook, onClose }) {
                         {b.pages && (
                           <div className="text-xs text-text-secondary">
                             <span className="font-medium text-text">{b.pages}</span> pages
-                          </div>
-                        )}
-                        {b.ebook_file_format && (
-                          <div className="text-xs text-text-secondary">
-                            Format: <span className="font-medium text-text">{b.ebook_file_format.toUpperCase()}</span>
                           </div>
                         )}
                         {b.ebook_file_size_mb && (
