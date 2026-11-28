@@ -149,26 +149,30 @@ export default function Careers() {
               {/* Name & Email */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-text mb-2">Full Name <span className="text-error">*</span></label>
+                  <label className="block text-sm font-medium text-text mb-2" htmlFor="career-name">Full Name <span className="text-error">*</span></label>
                   <input
                     type="text"
+                    id="career-name"
+                    autoComplete="name"
                     name="name"
                     value={form.name}
                     onChange={handleChange}
                     placeholder="Enter your full name"
-                    className="w-full px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-text-secondary/50"
+                    className="w-full min-h-11 px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-[border-color,box-shadow] placeholder:text-text-secondary/50"
                   />
                   {fieldErrors.name && <p className="text-xs text-error mt-1.5">{fieldErrors.name}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text mb-2">Email Address <span className="text-error">*</span></label>
+                  <label className="block text-sm font-medium text-text mb-2" htmlFor="career-email">Email Address <span className="text-error">*</span></label>
                   <input
                     type="email"
+                    id="career-email"
+                    autoComplete="email"
                     name="email"
                     value={form.email}
                     onChange={handleChange}
                     placeholder="name@example.com"
-                    className="w-full px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-text-secondary/50"
+                    className="w-full min-h-11 px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-[border-color,box-shadow] placeholder:text-text-secondary/50"
                   />
                   {fieldErrors.email && <p className="text-xs text-error mt-1.5">{fieldErrors.email}</p>}
                 </div>
@@ -177,24 +181,28 @@ export default function Careers() {
               {/* Phone & Role */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-text mb-2">Contact Number (WhatsApp) <span className="text-error">*</span></label>
+                  <label className="block text-sm font-medium text-text mb-2" htmlFor="career-phone_number">Contact Number (WhatsApp) <span className="text-error">*</span></label>
                   <input
                     type="tel"
+                    id="career-phone_number"
+                    autoComplete="tel"
+                    inputMode="tel"
                     name="phone_number"
                     value={form.phone_number}
                     onChange={handleChange}
                     placeholder="+91 00000-00000"
-                    className="w-full px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-text-secondary/50"
+                    className="w-full min-h-11 px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-[border-color,box-shadow] placeholder:text-text-secondary/50"
                   />
                   {fieldErrors.phone_number && <p className="text-xs text-error mt-1.5">{fieldErrors.phone_number}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text mb-2">Role Selection <span className="text-error">*</span></label>
+                  <label className="block text-sm font-medium text-text mb-2" htmlFor="career-wished_role">Role Selection <span className="text-error">*</span></label>
                   <select
+                    id="career-wished_role"
                     name="wished_role"
                     value={form.wished_role}
                     onChange={handleChange}
-                    className="w-full px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all appearance-none cursor-pointer"
+                    className="w-full min-h-11 pl-4 pr-10 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-[border-color,box-shadow] appearance-none cursor-pointer"
                     style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2.5' stroke-linecap='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center' }}
                   >
                     <option value="" disabled>Select a role</option>
@@ -208,12 +216,13 @@ export default function Careers() {
 
               {/* Subject */}
               <div>
-                <label className="block text-sm font-medium text-text mb-2">Subject <span className="text-error">*</span></label>
+                <label className="block text-sm font-medium text-text mb-2" htmlFor="career-subject">Subject <span className="text-error">*</span></label>
                 <select
+                  id="career-subject"
                   name="subject"
                   value={form.subject}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all appearance-none cursor-pointer"
+                  className="w-full min-h-11 pl-4 pr-10 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-[border-color,box-shadow] appearance-none cursor-pointer"
                   style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2.5' stroke-linecap='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center' }}
                 >
                   <option value="" disabled>Select a subject</option>
@@ -227,26 +236,30 @@ export default function Careers() {
               {/* Portfolio & Representative Work */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-text mb-2">Portfolio Link <span className="text-text-tertiary font-normal">(Optional)</span></label>
+                  <label className="block text-sm font-medium text-text mb-2" htmlFor="career-portfolio_link">Portfolio Link <span className="text-text-tertiary font-normal">(Optional)</span></label>
                   <input
                     type="url"
+                    id="career-portfolio_link"
+                    inputMode="url"
                     name="portfolio_link"
                     value={form.portfolio_link}
                     onChange={handleChange}
                     placeholder="Link to your Drive, CV, or Profile"
-                    className="w-full px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-text-secondary/50"
+                    className="w-full min-h-11 px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-[border-color,box-shadow] placeholder:text-text-secondary/50"
                   />
                   {fieldErrors.portfolio_link && <p className="text-xs text-error mt-1.5">{fieldErrors.portfolio_link}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text mb-2">Representative Work <span className="text-text-tertiary font-normal">(Optional)</span></label>
+                  <label className="block text-sm font-medium text-text mb-2" htmlFor="career-representative_work">Representative Work <span className="text-text-tertiary font-normal">(Optional)</span></label>
                   <input
                     type="url"
+                    id="career-representative_work"
+                    inputMode="url"
                     name="representative_work"
                     value={form.representative_work}
                     onChange={handleChange}
                     placeholder="Link to a lecture, paper, or project"
-                    className="w-full px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-text-secondary/50"
+                    className="w-full min-h-11 px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-[border-color,box-shadow] placeholder:text-text-secondary/50"
                   />
                   {fieldErrors.representative_work && <p className="text-xs text-error mt-1.5">{fieldErrors.representative_work}</p>}
                 </div>
@@ -254,14 +267,15 @@ export default function Careers() {
 
               {/* Additional Remarks */}
               <div>
-                <label className="block text-sm font-medium text-text mb-2">Additional Remarks <span className="text-error">*</span></label>
+                <label className="block text-sm font-medium text-text mb-2" htmlFor="career-message">Additional Remarks <span className="text-error">*</span></label>
                 <textarea
+                  id="career-message"
                   name="message"
                   value={form.message}
                   onChange={handleChange}
                   rows={4}
                   placeholder="Share your achievements or skills"
-                  className="w-full px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all resize-y min-h-25 placeholder:text-text-secondary/50"
+                  className="w-full px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-[border-color,box-shadow] resize-y min-h-25 placeholder:text-text-secondary/50"
                 />
                 {fieldErrors.message && <p className="text-xs text-error mt-1.5">{fieldErrors.message}</p>}
               </div>

@@ -6,6 +6,20 @@ import { useAuth } from '../context/AuthContext';
 import { usePurchase } from '../context/PurchaseContext';
 import { formatPrice } from './PriceDisplay';
 import UpsellModal from './UpsellModal';
+import TierSelector from './TierSelector';
+import ComboContents from './ComboContents';
+import { resolveBundledPackages } from '../lib/packageCatalog';
+import {
+  getTiers,
+  getPricing,
+  parseTierIndex,
+  formatAccess,
+  formatDate,
+  formatDuration,
+  renewalCopy,
+  packageCheckoutPath,
+  tierNameRepeatsDuration,
+} from '../utils/packageTiers';
 
 export default function PackageModal({ package: listPkg, onClose }) {
   const navigate = useNavigate();
@@ -18,6 +32,7 @@ export default function PackageModal({ package: listPkg, onClose }) {
   // Buy Now opens the upsell step first — including for signed-out visitors,
   // who should see the offer before being bounced to /login.
   const [upsellOpen, setUpsellOpen] = useState(false);
+  const [bundledItems, setBundledItems] = useState([]);
   const bodyRef = useRef(null);
 
   const packageId = listPkg?.package_id || listPkg?._id;
@@ -28,7 +43,11 @@ export default function PackageModal({ package: listPkg, onClose }) {
     (async () => {
       try {
         const result = await getPackageById(packageId);
-        setPkg(result.package || result);
+        const detail = result.package || result;
+        setPkg(detail);
+        // An owner starts on their own plan, so "Renew / Extend" renews it.
+        const owned = parseTierIndex(detail, detail.current_tier?.tier_index);
+        if (owned != null) setSelectedTier(owned);
       } catch {
         setError('Failed to load package details');
       } finally {
@@ -36,6 +55,19 @@ export default function PackageModal({ package: listPkg, onClose }) {
       }
     })();
   }, [packageId]);
+
+  useEffect(() => {
+    if (!pkg?.bundled_packages?.length) return;
+    let cancelled = false;
+    resolveBundledPackages(pkg.bundled_packages)
+      .then((items) => {
+        if (!cancelled) setBundledItems(items);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [pkg]);
 
   // Lock body scroll & close on Escape. While the upsell sits on top, both
   // handlers stand down: Escape belongs to the topmost modal, and the
@@ -67,26 +99,33 @@ export default function PackageModal({ package: listPkg, onClose }) {
     }
   };
 
-  const purchased = listPkg?.is_purchased || isPackagePurchased(packageId);
+  const purchased = !!(listPkg?.is_purchased || pkg?.is_enrolled || isPackagePurchased(packageId));
 
   // Use list data as fallback while detail loads
   const p = pkg || listPkg;
-  const hasTiers = p?.has_tiers && p?.tiers?.length > 0;
-  const currentTier = hasTiers ? p.tiers[selectedTier] : null;
-  const price = currentTier ? (currentTier.effective_price || currentTier.price) : (p?.sale_price || p?.price);
-  const originalPrice = currentTier ? currentTier.original_price : p?.original_price;
-  const isOnSale = currentTier ? (currentTier.original_price > (currentTier.effective_price || currentTier.price)) : p?.is_on_sale;
-  const durationDays = currentTier ? currentTier.duration_days : p?.duration_days;
-  const pkgType = p?.type || p?.package_type;
+  const tiers = getTiers(p);
+  const { tier: currentTier, price, originalPrice, isOnSale, durationDays } = getPricing(p, selectedTier);
+  const pkgType = p?.type || p?.package_type || (pkg?.is_combo ? 'Combo' : null);
+  const planName = currentTier?.name && !tierNameRepeatsDuration(currentTier) ? currentTier.name : null;
+  const tierIndexForCheckout = tiers ? selectedTier : null;
+  // Detail carries current_tier; the list row carries expires_at.
+  const ownedEndsAt = pkg?.current_tier?.expires_at || listPkg?.expires_at || null;
+  const ownedTierIndex = parseTierIndex(p, pkg?.current_tier?.tier_index ?? listPkg?.current_tier_index);
 
   const handleBuy = () => {
     if (!isAuthenticated) {
       onClose();
-      navigate('/login', { state: { from: { pathname: `/packages/${packageId}` } } });
+      const search = tiers ? `?tier=${selectedTier}` : '';
+      navigate('/login', { state: { from: { pathname: `/packages/${packageId}`, search } } });
       return;
     }
     onClose();
-    navigate(`/checkout/packages/${packageId}`, { state: { tierIndex: selectedTier } });
+    navigate(packageCheckoutPath(packageId, { tierIndex: tierIndexForCheckout }));
+  };
+
+  const handleRenew = () => {
+    onClose();
+    navigate(packageCheckoutPath(packageId, { tierIndex: tierIndexForCheckout }));
   };
 
   const modal = (
@@ -98,18 +137,20 @@ export default function PackageModal({ package: listPkg, onClose }) {
       />
 
       {/* Centered container */}
-      <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6">
+      <div className="absolute inset-0 flex items-center sm:items-start justify-center p-4 sm:p-6 sm:pt-[7dvh]">
         <div className="w-full flex items-center justify-center">
           {/* Modal card */}
           <div
-            className="relative w-full max-w-lg max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-clip animate-modal-content flex flex-col"
+            className="relative w-full max-w-lg h-[85dvh] sm:h-auto sm:max-h-[85dvh] bg-white rounded-2xl shadow-2xl overflow-clip animate-modal-content flex flex-col"
             onClick={(e) => e.stopPropagation()}
             onWheel={handleModalWheel}
           >
             {/* Close button */}
             <button
               onClick={onClose}
-              className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm flex items-center justify-center transition-colors cursor-pointer border-0"
+              type="button"
+              aria-label="Close"
+              className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 z-10 w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 active:bg-white/30 backdrop-blur-sm flex items-center justify-center transition-colors cursor-pointer border-0"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
                 <path d="M18 6L6 18M6 6l12 12" />
@@ -132,8 +173,12 @@ export default function PackageModal({ package: listPkg, onClose }) {
                 )}
               </div>
               <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white leading-snug pr-10">{p?.name}</h2>
-              {durationDays && (
-                <p className="text-white/70 text-xs sm:text-sm mt-1">{durationDays} days access</p>
+              {tiers && tiers.length > 1 ? (
+                <p className="text-white/70 text-xs sm:text-sm mt-1">
+                  {tiers.length} plans: {tiers.map((t) => formatDuration(t.duration_days) || t.name).join(' or ')}
+                </p>
+              ) : (
+                durationDays && <p className="text-white/70 text-xs sm:text-sm mt-1">{formatAccess(durationDays)}</p>
               )}
             </div>
 
@@ -174,40 +219,32 @@ export default function PackageModal({ package: listPkg, onClose }) {
                 <>
                   {/* Thumbnail */}
                   {p.thumbnail_url && (
-                    <div className="rounded-xl overflow-hidden">
+                    <div className="rounded-xl overflow-hidden aspect-video max-h-56 w-full bg-surface-dim">
                       <img
                         src={p.thumbnail_url}
                         alt={p.name}
-                        className="w-full h-auto max-h-56 object-cover"
+                        width="1280"
+                        height="720"
+                        decoding="async"
+                        className="w-full h-full object-cover"
                       />
                     </div>
                   )}
 
                   {/* Tier Selector */}
-                  {hasTiers && p.tiers.length > 1 && (
-                    <div>
-                      <h4 className="text-xs sm:text-sm font-semibold text-text mb-2">Select Duration</h4>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5">
-                        {p.tiers.map((tier, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => setSelectedTier(idx)}
-                            className={`p-2.5 sm:p-3 rounded-xl border-2 text-left transition-all cursor-pointer ${
-                              selectedTier === idx
-                                ? 'border-primary bg-primary text-white shadow-sm'
-                                : 'border-border bg-white hover:border-primary/30'
-                            }`}
-                          >
-                            <div className={`text-xs sm:text-sm font-semibold ${selectedTier === idx ? 'text-white' : 'text-text'}`}>{tier.name}</div>
-                            <div className={`text-[10px] sm:text-xs mt-0.5 ${selectedTier === idx ? 'text-white/70' : 'text-text-secondary'}`}>{tier.duration_days} days</div>
-                            <div className={`text-xs sm:text-sm font-bold mt-1 ${selectedTier === idx ? 'text-white' : 'text-primary'}`}>
-                              {formatPrice(tier.effective_price || tier.price)}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                  {tiers && tiers.length > 1 && (
+                    <TierSelector
+                      tiers={tiers}
+                      selected={selectedTier}
+                      onSelect={setSelectedTier}
+                      ownedTierIndex={purchased ? ownedTierIndex : null}
+                      label={purchased ? 'Choose a plan to renew or extend' : 'Choose your plan'}
+                      compact
+                    />
                   )}
+
+                  {/* Combo contents */}
+                  {pkg?.is_combo && <ComboContents items={bundledItems} onNavigate={onClose} />}
 
                   {/* Package Info */}
                   {(durationDays || p.series_count) && (
@@ -220,7 +257,10 @@ export default function PackageModal({ package: listPkg, onClose }) {
                       </div>
                       <div>
                         {durationDays && (
-                          <div className="text-sm font-semibold text-text">{durationDays} days access</div>
+                          <div className="text-sm font-semibold text-text">
+                            {formatAccess(durationDays)}
+                            {planName && <span className="font-normal text-text-secondary"> · {planName}</span>}
+                          </div>
                         )}
                         {p.series_count > 0 && (
                           <div className="text-xs text-text-secondary mt-0.5">{p.series_count} video series included</div>
@@ -262,17 +302,27 @@ export default function PackageModal({ package: listPkg, onClose }) {
             {/* Footer CTA */}
             <div className="relative border-t border-border px-5 sm:px-6 md:px-8 py-5 sm:py-6 bg-white shrink-0">
               {purchased ? (
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-success/8 rounded-lg flex items-center justify-center shrink-0">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-success">
-                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <polyline points="22 4 12 14.01 9 11.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
+                <div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-success/8 rounded-lg flex items-center justify-center shrink-0">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-success">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <polyline points="22 4 12 14.01 9 11.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-success">
+                        Purchased{ownedEndsAt ? ` · ends ${formatDate(ownedEndsAt)}` : ''}
+                      </div>
+                      <p className="text-xs text-text-secondary">Open the PGME app to access this package</p>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-sm font-semibold text-success">Purchased</div>
-                    <p className="text-xs text-text-secondary">Open the PGME app to access this package</p>
-                  </div>
+                  <p className="text-[11px] sm:text-xs text-text-secondary leading-relaxed mt-3">
+                    {renewalCopy(durationDays, ownedEndsAt)}
+                  </p>
+                  <button onClick={handleRenew} className="btn-primary w-full mt-3 py-2.5! sm:py-3!">
+                    Renew / Extend — {formatPrice(price)}
+                  </button>
                 </div>
               ) : (
                 <div className="flex items-center justify-between gap-4">
@@ -280,6 +330,9 @@ export default function PackageModal({ package: listPkg, onClose }) {
                     <div className="text-lg sm:text-xl font-bold text-text">{formatPrice(price)}</div>
                     {isOnSale && originalPrice > price && (
                       <div className="text-xs text-text-secondary line-through">{formatPrice(originalPrice)}</div>
+                    )}
+                    {tiers && durationDays && (
+                      <div className="text-[11px] sm:text-xs text-text-secondary">{formatAccess(durationDays)}</div>
                     )}
                   </div>
                   <button
@@ -319,6 +372,8 @@ export default function PackageModal({ package: listPkg, onClose }) {
         originalPrice={originalPrice}
         isOnSale={isOnSale}
         durationDays={durationDays}
+        planName={planName}
+        bundledItems={bundledItems}
       />
     </>,
     document.body,

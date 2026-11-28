@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { getPackageById, calculateTierUpgrade, getComboOffer } from '../api/packages';
 import { formatPrice } from './PriceDisplay';
+import { formatAccess, packageCheckoutPath } from '../utils/packageTiers';
 
 /**
  * Everything a customer can do with a package they already own:
@@ -88,19 +89,20 @@ export default function TierUpgradeModal({ open, onClose, purchase }) {
   const upgradeable = Object.entries(quotes).filter(([, q]) => q);
 
   const choose = (tierIndex, quote) => {
-    navigate(`/checkout/packages/${purchase.package_id}`, {
-      state: { tierIndex: Number(tierIndex), upgradeMode: 'tier', upgradeQuote: quote },
+    // Tier and mode live in the URL so a reload re-prices the same upgrade.
+    navigate(packageCheckoutPath(purchase.package_id, { tierIndex: Number(tierIndex), mode: 'tier' }), {
+      state: { upgradeQuote: quote },
     });
   };
 
   const chooseCombo = () => {
-    navigate(`/checkout/packages/${comboOffer.combo.package_id}`, {
-      state: {
-        upgradeMode: 'combo',
-        upgradeQuote: comboOffer,
+    navigate(
+      packageCheckoutPath(comboOffer.combo.package_id, {
         tierIndex: comboOffer.combo.tier_index ?? 0,
-      },
-    });
+        mode: 'combo',
+      }),
+      { state: { upgradeQuote: comboOffer } }
+    );
   };
 
   const modal = (
@@ -117,7 +119,7 @@ export default function TierUpgradeModal({ open, onClose, purchase }) {
           <button
             type="button"
             onClick={onClose}
-            className="text-text-tertiary hover:text-text transition-colors p-1 -mr-1 shrink-0"
+            className="inline-flex items-center justify-center w-10 h-10 -mr-2.5 rounded-full text-text-tertiary hover:text-text active:bg-black/5 transition-colors shrink-0"
             aria-label="Close"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -150,7 +152,7 @@ export default function TierUpgradeModal({ open, onClose, purchase }) {
                 <button
                   type="button"
                   onClick={chooseCombo}
-                  className="w-full text-left rounded-lg border border-primary/40 bg-primary/5 p-4 mb-3 hover:border-primary hover:shadow-sm transition-all"
+                  className="w-full text-left rounded-lg border border-primary/40 bg-primary/5 p-4 mb-3 hover:border-primary hover:shadow-sm transition-[color,background-color,border-color,box-shadow,transform]"
                 >
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
@@ -165,7 +167,7 @@ export default function TierUpgradeModal({ open, onClose, purchase }) {
                       <p className="text-sm font-semibold text-text">{comboOffer.combo.name}</p>
                       <p className="text-[11px] text-text-tertiary mt-0.5">
                         Combo price {formatPrice(comboOffer.combo.price)}
-                        {comboOffer.granted_days ? ` · ${comboOffer.granted_days} days access` : ''}
+                        {comboOffer.granted_days ? ` · ${formatAccess(comboOffer.granted_days)}` : ''}
                       </p>
                     </div>
                     <div className="text-right shrink-0">
@@ -196,7 +198,7 @@ export default function TierUpgradeModal({ open, onClose, purchase }) {
                       key={idx}
                       type="button"
                       onClick={() => choose(idx, q)}
-                      className="w-full text-left rounded-lg border border-border p-4 hover:border-primary hover:shadow-sm transition-all"
+                      className="w-full text-left rounded-lg border border-border p-4 hover:border-primary hover:shadow-sm transition-[color,background-color,border-color,box-shadow,transform]"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -204,7 +206,7 @@ export default function TierUpgradeModal({ open, onClose, purchase }) {
                             {q.target_tier?.name || tier?.name || `Tier ${Number(idx) + 1}`}
                           </p>
                           <p className="text-[11px] text-text-tertiary mt-0.5">
-                            {q.target_tier?.duration_days ?? tier?.duration_days} days access
+                            {formatAccess(q.target_tier?.duration_days ?? tier?.duration_days)}
                           </p>
                         </div>
                         <div className="text-right shrink-0">

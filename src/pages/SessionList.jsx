@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { getSessions } from '../api/sessions';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { getSessions, sessionAccess, weeklyInfo, sessionStillOn } from '../api/sessions';
 import { getFormsBySubject } from '../api/forms';
 import { usePurchase } from '../context/PurchaseContext';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +10,7 @@ import { formatPrice } from '../components/PriceDisplay';
 import SessionModal from '../components/SessionModal';
 import FormCard from '../components/FormCard';
 import FormModal from '../components/FormModal';
+import CardSkeletons from '../components/CardSkeletons';
 
 function SessionCard({ session, purchased, onClick }) {
   const formatDate = (dateStr) => {
@@ -27,12 +28,20 @@ function SessionCard({ session, purchased, onClick }) {
   };
 
   const startTime = session.scheduled_start_time || session.scheduled_start;
+  // A weekly series (missing fields mean a one-off session)
+  const weekly = weeklyInfo(session);
+  const isLive = session.status === 'live';
+  // Who can join (package subscriptions); missing fields mean "everyone"
+  const access = sessionAccess(session);
+  const included = access.included && !purchased;
+  const subsOnly = access.mode === 'subscribers_only' && !access.included && !purchased;
+  const freeForSubs = access.mode === 'subscribers_free' && !access.included && !purchased;
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group relative flex flex-col w-full text-left bg-white rounded-2xl border border-border/60 overflow-hidden hover:shadow-lg hover:border-primary/20 transition-all duration-200 cursor-pointer"
+      className="tap-press group relative flex flex-col w-full h-full text-left bg-white rounded-2xl border border-border/60 overflow-hidden hover:shadow-lg hover:border-primary/20 duration-200 cursor-pointer"
     >
       {/* Cover image */}
       <div className="relative bg-surface-dim">
@@ -41,6 +50,10 @@ function SessionCard({ session, purchased, onClick }) {
             <img
               src={session.thumbnail_url}
               alt={session.title}
+              width="640"
+              height="360"
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
             />
           </div>
@@ -53,12 +66,29 @@ function SessionCard({ session, purchased, onClick }) {
           </div>
         )}
         {/* Badges */}
+        {/* LIVE only while a class is actually running */}
+        {isLive && (
+          <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold bg-error text-white px-2.5 py-1 rounded-full shadow-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-white" aria-hidden="true" />
+            Live now
+          </span>
+        )}
         {purchased && (
           <span className="absolute top-3 right-3 text-[10px] sm:text-xs font-semibold bg-success text-white px-2.5 py-1 rounded-full shadow-sm">
             Purchased
           </span>
         )}
-        {!purchased && session.is_free && (
+        {included && (
+          <span className="absolute top-3 right-3 text-[10px] sm:text-xs font-semibold bg-success text-white px-2.5 py-1 rounded-full shadow-sm">
+            Included
+          </span>
+        )}
+        {subsOnly && (
+          <span className="absolute top-3 right-3 text-[10px] sm:text-xs font-semibold bg-primary text-white px-2.5 py-1 rounded-full shadow-sm">
+            Subscribers only
+          </span>
+        )}
+        {!purchased && !included && !subsOnly && session.is_free && (
           <span className="absolute top-3 right-3 text-[10px] sm:text-xs font-semibold bg-success text-white px-2.5 py-1 rounded-full shadow-sm">
             FREE
           </span>
@@ -75,7 +105,7 @@ function SessionCard({ session, purchased, onClick }) {
         )}
 
         {/* Title */}
-        <h3 className="text-sm sm:text-base font-semibold text-text group-hover:text-primary transition-colors line-clamp-2 leading-snug mb-2">
+        <h3 className="text-sm sm:text-base font-semibold text-text group-hover:text-primary transition-colors line-clamp-3 leading-snug mb-2 break-words">
           {session.title}
         </h3>
 
@@ -86,8 +116,35 @@ function SessionCard({ session, purchased, onClick }) {
           </p>
         )}
 
-        {/* Schedule info */}
-        {startTime && (
+        {/* Who can join */}
+        {(included || subsOnly || freeForSubs) && (
+          <p className={`text-[11px] sm:text-xs font-medium mb-2.5 line-clamp-2 ${included ? 'text-success' : 'text-text-secondary'}`}>
+            {included
+              ? `Included with your ${access.viaName} subscription`
+              : subsOnly
+                ? `For ${access.names || 'package'} subscribers`
+                : `Free for ${access.names || 'package'} subscribers`}
+          </p>
+        )}
+
+        {/* Weekly series: the pattern, then the class now or next */}
+        {weekly ? (
+          <div className="mb-3 space-y-1 text-[11px] sm:text-xs">
+            <div className="flex items-start gap-2">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0 mt-px" aria-hidden="true">
+                <polyline points="17 1 21 5 17 9" />
+                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                <polyline points="7 23 3 19 7 15" />
+                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+              </svg>
+              <span className="text-text font-medium min-w-0 break-words">{weekly.label}</span>
+            </div>
+            <p className={`pl-[21px] ${weekly.live ? 'text-error font-semibold' : 'text-text-secondary'}`}>
+              {weekly.nextText}
+              {weekly.classText && <span className="text-text-tertiary font-normal"> · {weekly.classText}</span>}
+            </p>
+          </div>
+        ) : startTime && (
           <div className="flex items-center gap-2 text-[11px] sm:text-xs mb-3 flex-wrap">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -133,6 +190,10 @@ function SessionCard({ session, purchased, onClick }) {
           <div className="shrink-0 flex items-center gap-2">
             {purchased ? (
               <span className="text-xs font-semibold text-success bg-success/8 px-2.5 py-1 rounded-full">Purchased</span>
+            ) : included ? (
+              <span className="text-xs font-semibold text-success bg-success/8 px-2.5 py-1 rounded-full">Included</span>
+            ) : subsOnly ? (
+              <span className="text-xs sm:text-sm font-semibold text-primary bg-primary/8 px-3 py-1.5 rounded-lg whitespace-nowrap">View details</span>
             ) : session.is_free ? (
               <span className="text-xs font-semibold text-success bg-success/8 px-2.5 py-1 rounded-full">FREE</span>
             ) : (
@@ -151,6 +212,7 @@ function SessionCard({ session, purchased, onClick }) {
 }
 
 export default function SessionList() {
+  const navigate = useNavigate();
   const { isSessionPurchased } = usePurchase();
   const { isAuthenticated } = useAuth();
   const { subjects, subjectId, selectedSubject, selectSubject, selectSubjectBySlug } = useSubject();
@@ -269,8 +331,17 @@ export default function SessionList() {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-24">
-        <div className="w-9 h-9 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
+      <div role="status" aria-label="Loading live sessions">
+        {/* Same blocks as the page: heading, specialty picker, cards */}
+        <div className="mb-6 sm:mb-10 lg:mb-12" aria-hidden="true">
+          <div className="mb-5">
+            <div className="skeleton h-3 w-10 mb-3" />
+            <div className="skeleton h-8 sm:h-9 lg:h-10 w-56 sm:w-72 max-w-full" />
+            <div className="skeleton h-4 w-64 max-w-full mt-3" />
+          </div>
+          <div className="skeleton h-[78px] sm:h-[94px] w-full rounded-2xl" />
+        </div>
+        <CardSkeletons count={3} cover="aspect-video" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5 lg:gap-6 2xl:gap-7" />
       </div>
     );
   }
@@ -281,19 +352,25 @@ export default function SessionList() {
 
   const now = new Date();
 
-  // Client-side safety: exclude sessions past their end time
-  const activeSessions = sessions.filter((s) => {
-    const endTime = s.scheduled_end_time || s.scheduled_end;
-    if (!endTime) return true; // No end time = keep it
-    return new Date(endTime) > now;
-  });
+  // Client-side safety: exclude sessions past their end time (a weekly
+  // series stays until its last class, including a class in its overtime)
+  const activeSessions = sessions.filter((s) => sessionStillOn(s, now));
 
   // Split: purchased (not ended) go to "Your Sessions"
   const yourSessions = [];
   const otherSessions = [];
 
+  // A session with a package rule opens its page (it shows who can join and
+  // the way in); every other session keeps the quick view.
+  // A weekly series opens its page too (it shows the schedule and the next class).
+  const openSession = (session) => {
+    if (sessionAccess(session).mode !== 'everyone' || session.repeat?.weekly) navigate(`/sessions/${session.session_id}`);
+    else setSelectedSession(session);
+  };
+
   activeSessions.forEach((session) => {
-    const purchased = isSessionPurchased(session.session_id);
+    // Included with the student's package subscription counts as theirs too
+    const purchased = isSessionPurchased(session.session_id) || sessionAccess(session).included;
     if (purchased) {
       yourSessions.push(session);
     } else {
@@ -322,7 +399,8 @@ export default function SessionList() {
           <button
             type="button"
             onClick={() => setSpecialtyOpen(!specialtyOpen)}
-            className="w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-4 sm:py-5 bg-[#d6e4ff] rounded-2xl border border-[#d6e4ff] hover:border-primary/30 transition-all duration-200 cursor-pointer text-left"
+            aria-expanded={specialtyOpen}
+            className="tap-press w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-4 sm:py-5 bg-[#d6e4ff] rounded-2xl border border-[#d6e4ff] hover:border-primary/30 duration-200 cursor-pointer text-left"
           >
             <div className="min-w-0">
               <p className="text-[11px] sm:text-xs font-medium text-text-tertiary uppercase tracking-wider mb-1">Your Specialty</p>
@@ -349,7 +427,7 @@ export default function SessionList() {
                       key={id}
                       type="button"
                       onClick={() => handleSubjectSelect(subject)}
-                      className={`flex items-center gap-3 px-4 py-3 sm:py-3.5 rounded-xl text-left transition-all duration-150 cursor-pointer border ${
+                      className={`flex items-center gap-3 min-h-12 px-4 py-3 sm:py-3.5 rounded-xl text-left transition-colors duration-150 cursor-pointer border ${
                         isActive
                           ? 'bg-primary/5 border-primary/20 text-primary'
                           : 'bg-transparent border-transparent hover:bg-surface-dim text-text-secondary hover:text-text'
@@ -401,8 +479,8 @@ export default function SessionList() {
                   <SessionCard
                     key={session.session_id}
                     session={session}
-                    purchased={true}
-                    onClick={() => setSelectedSession(session)}
+                    purchased={isSessionPurchased(session.session_id)}
+                    onClick={() => openSession(session)}
                   />
                 ))}
               </div>
@@ -425,7 +503,7 @@ export default function SessionList() {
                     key={session.session_id}
                     session={session}
                     purchased={isSessionPurchased(session.session_id)}
-                    onClick={() => setSelectedSession(session)}
+                    onClick={() => openSession(session)}
                   />
                 ))}
               </div>

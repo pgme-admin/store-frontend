@@ -90,8 +90,8 @@ export default function FormPaymentProcessing() {
               </p>
               <div className="w-full bg-surface-dim rounded-full h-1.5 mb-3 overflow-hidden">
                 <div
-                  className="h-full bg-primary rounded-full transition-all duration-1000 ease-linear"
-                  style={{ width: `${Math.min((elapsed / MAX_POLL_DURATION) * 100, 100)}%` }}
+                  className="h-full w-full bg-primary rounded-full origin-left transition-transform duration-1000 ease-linear"
+                  style={{ transform: `scaleX(${Math.min(elapsed / MAX_POLL_DURATION, 1)})` }}
                 />
               </div>
               <p className="text-xs text-text-tertiary">Please do not close this page</p>

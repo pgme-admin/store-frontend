@@ -32,7 +32,7 @@ function InvoiceButton({ invoiceId, invoiceNumber }) {
     <button
       onClick={handleDownload}
       disabled={downloading}
-      className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs text-primary hover:text-primary-dark font-medium transition-colors cursor-pointer bg-primary/5 hover:bg-primary/10 border-0 px-2.5 py-1.5 rounded-lg disabled:opacity-50"
+      className="inline-flex items-center gap-1.5 min-h-10 text-[11px] sm:text-xs text-primary hover:text-primary-dark font-medium transition-colors cursor-pointer bg-primary/5 hover:bg-primary/10 active:bg-primary/10 border-0 px-3 py-1.5 rounded-lg disabled:opacity-50"
     >
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -156,8 +156,9 @@ export default function MyPurchases() {
                       <div key={p.purchase_id} className="bg-white rounded-xl shadow-sm border border-border p-4 sm:p-5 lg:p-6 hover:shadow-md transition-shadow">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <h3 className="text-sm sm:text-base font-semibold text-text truncate">
+                            <h3 className="text-sm sm:text-base font-semibold text-text break-words">
                               {p.name || 'Package'}
+                              {p.is_test && <TestChip />}
                             </h3>
                             {p.tier_name && (
                               <span className="text-[11px] sm:text-xs text-text-secondary mt-0.5 block">{p.tier_name}</span>
@@ -167,15 +168,15 @@ export default function MyPurchases() {
                             )}
                           </div>
                           <span className={`text-[11px] sm:text-xs font-semibold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0 ${
-                            p.is_active ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
+                            p.is_active ? 'bg-success/10 text-success' : p.access_ended ? 'bg-text-secondary/10 text-text-secondary' : 'bg-error/10 text-error'
                           }`}>
-                            {p.is_active ? 'Active' : 'Expired'}
+                            {p.is_active ? 'Active' : p.access_ended ? 'Access ended' : 'Expired'}
                           </span>
                         </div>
-                        <div className="mt-3 sm:mt-4 pt-3 border-t border-border/60 flex items-center justify-between">
-                          <div className="text-[11px] sm:text-xs text-text-secondary flex flex-wrap gap-3 sm:gap-4">
+                        <div className="mt-3 sm:mt-4 pt-3 border-t border-border/60 flex items-center justify-between gap-3">
+                          <div className="min-w-0 text-[11px] sm:text-xs text-text-secondary flex flex-wrap gap-x-3 sm:gap-x-4 gap-y-1">
                             <span className="font-medium text-text">{formatPrice(p.amount_paid)}</span>
-                            {p.expires_at && <span>Expires: {formatDate(p.expires_at)}</span>}
+                            {p.expires_at && !p.access_ended && <span>Expires: {formatDate(p.expires_at)}</span>}
                             {p.purchased_at && <span>Purchased: {formatDate(p.purchased_at)}</span>}
                           </div>
                           {inv && (
@@ -184,24 +185,39 @@ export default function MyPurchases() {
                         </div>
                         {/* Expired packages were previously a dead end with no
                             way to buy access again. */}
+                        {/* Access the business ended (refund, dispute): the package is
+                            buyable again like for anyone, with one quiet line. */}
+                        {p.access_ended && (
+                          <p className="mt-3 text-[11px] sm:text-xs text-text-secondary">Your earlier access to this package ended.</p>
+                        )}
                         {!p.is_active && p.package_id && (
                           <Link
                             to={`/packages/${p.package_id}`}
                             className="mt-3 btn-primary w-full !py-2.5 justify-center no-underline text-xs sm:text-sm"
                           >
-                            Renew Access
+                            {p.access_ended ? 'Buy again' : 'Renew Access'}
                           </Link>
                         )}
                         {/* Web customers previously had no way to upgrade at
                             all — the flow existed only in the mobile app. */}
                         {p.is_active && p.package_id && (
-                          <button
-                            type="button"
-                            onClick={() => setUpgradeTarget(p)}
-                            className="mt-3 btn-outline w-full !py-2.5 justify-center text-xs sm:text-sm"
-                          >
-                            Upgrade Plan
-                          </button>
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            {/* Renewal adds time after the current end date,
+                                so it is offered while the plan is still active. */}
+                            <Link
+                              to={`/packages/${p.package_id}${p.tier_index != null ? `?tier=${p.tier_index}` : ''}`}
+                              className="btn-primary w-full !py-2.5 px-3 whitespace-nowrap justify-center no-underline text-xs sm:text-sm"
+                            >
+                              Renew / Extend
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => setUpgradeTarget(p)}
+                              className="btn-outline w-full !py-2.5 px-3 whitespace-nowrap justify-center text-xs sm:text-sm"
+                            >
+                              Upgrade Plan
+                            </button>
+                          </div>
                         )}
                       </div>
                     );
@@ -230,19 +246,20 @@ export default function MyPurchases() {
                       <div key={e.purchase_id} className="bg-white rounded-xl shadow-sm border border-border p-4 sm:p-5 lg:p-6 hover:shadow-md transition-shadow">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <h3 className="text-sm sm:text-base font-semibold text-text truncate">
+                            <h3 className="text-sm sm:text-base font-semibold text-text break-words">
                               {e.name || 'eBook'}
+                              {e.is_test && <TestChip />}
                             </h3>
                             {e.author && (
                               <span className="text-[11px] sm:text-xs text-text-secondary mt-0.5 block">{e.author}</span>
                             )}
                           </div>
-                          <span className="text-[11px] sm:text-xs font-semibold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-success/10 text-success shrink-0">
-                            Purchased
+                          <span className={`text-[11px] sm:text-xs font-semibold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0 ${e.access_ended ? 'bg-text-secondary/10 text-text-secondary' : 'bg-success/10 text-success'}`}>
+                            {e.access_ended ? 'Access ended' : 'Purchased'}
                           </span>
                         </div>
-                        <div className="mt-3 sm:mt-4 pt-3 border-t border-border/60 flex items-center justify-between">
-                          <div className="text-[11px] sm:text-xs text-text-secondary flex flex-wrap gap-3 sm:gap-4">
+                        <div className="mt-3 sm:mt-4 pt-3 border-t border-border/60 flex items-center justify-between gap-3">
+                          <div className="min-w-0 text-[11px] sm:text-xs text-text-secondary flex flex-wrap gap-x-3 sm:gap-x-4 gap-y-1">
                             <span className="font-medium text-text">{formatPrice(e.amount_paid)}</span>
                             {e.purchased_at && <span>{formatDate(e.purchased_at)}</span>}
                           </div>
@@ -277,7 +294,7 @@ export default function MyPurchases() {
                       <div key={s.purchase_id} className="bg-white rounded-xl shadow-sm border border-border p-4 sm:p-5 lg:p-6 hover:shadow-md transition-shadow">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <h3 className="text-sm sm:text-base font-semibold text-text truncate">
+                            <h3 className="text-sm sm:text-base font-semibold text-text break-words">
                               {s.name || 'Session'}
                             </h3>
                             {s.faculty_name && (
@@ -287,11 +304,11 @@ export default function MyPurchases() {
                           <span className={`text-[11px] sm:text-xs font-semibold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0 ${
                             s.session_status === 'completed' ? 'bg-text-secondary/10 text-text-secondary' : 'bg-success/10 text-success'
                           }`}>
-                            {s.session_status === 'completed' ? 'Completed' : 'Purchased'}
+                            {s.access_ended ? 'Access ended' : s.session_status === 'completed' ? 'Completed' : 'Purchased'}
                           </span>
                         </div>
-                        <div className="mt-3 sm:mt-4 pt-3 border-t border-border/60 flex items-center justify-between">
-                          <div className="text-[11px] sm:text-xs text-text-secondary flex flex-wrap gap-3 sm:gap-4">
+                        <div className="mt-3 sm:mt-4 pt-3 border-t border-border/60 flex items-center justify-between gap-3">
+                          <div className="min-w-0 text-[11px] sm:text-xs text-text-secondary flex flex-wrap gap-x-3 sm:gap-x-4 gap-y-1">
                             <span className="font-medium text-text">{formatPrice(s.amount_paid)}</span>
                             {s.scheduled_start_time && <span>{formatDate(s.scheduled_start_time)}</span>}
                             {!s.scheduled_start_time && s.purchased_at && <span>{formatDate(s.purchased_at)}</span>}
@@ -330,7 +347,7 @@ export default function MyPurchases() {
                       <div key={w.purchase_id} className="bg-white rounded-xl shadow-sm border border-border p-4 sm:p-5 lg:p-6 hover:shadow-md transition-shadow">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <h3 className="text-sm sm:text-base font-semibold text-text truncate">
+                            <h3 className="text-sm sm:text-base font-semibold text-text break-words">
                               {w.name || 'Workshop'}
                             </h3>
                             <span className="text-[11px] sm:text-xs text-text-secondary mt-0.5 block">
@@ -344,11 +361,11 @@ export default function MyPurchases() {
                                 ? 'bg-text-secondary/10 text-text-secondary'
                                 : 'bg-success/10 text-success'
                           }`}>
-                            {w.workshop_status === 'cancelled' ? 'Cancelled' : ended ? 'Completed' : 'Enrolled'}
+                            {w.access_ended ? 'Access ended' : w.workshop_status === 'cancelled' ? 'Cancelled' : ended ? 'Completed' : 'Enrolled'}
                           </span>
                         </div>
-                        <div className="mt-3 sm:mt-4 pt-3 border-t border-border/60 flex items-center justify-between">
-                          <div className="text-[11px] sm:text-xs text-text-secondary flex flex-wrap gap-3 sm:gap-4">
+                        <div className="mt-3 sm:mt-4 pt-3 border-t border-border/60 flex items-center justify-between gap-3">
+                          <div className="min-w-0 text-[11px] sm:text-xs text-text-secondary flex flex-wrap gap-x-3 sm:gap-x-4 gap-y-1">
                             <span className="font-medium text-text">{formatPrice(w.amount_paid)}</span>
                             {w.start_date && <span>{formatDate(w.start_date)}</span>}
                           </div>
@@ -398,7 +415,7 @@ export default function MyPurchases() {
                       <div key={f.purchase_id} className="bg-white rounded-xl shadow-sm border border-border p-4 sm:p-5 lg:p-6 hover:shadow-md transition-shadow">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <h3 className="text-sm sm:text-base font-semibold text-text truncate">
+                            <h3 className="text-sm sm:text-base font-semibold text-text break-words">
                               {f.name || 'Form Registration'}
                             </h3>
                             {f.subject && (
@@ -409,8 +426,8 @@ export default function MyPurchases() {
                             Registered
                           </span>
                         </div>
-                        <div className="mt-3 sm:mt-4 pt-3 border-t border-border/60 flex items-center justify-between">
-                          <div className="text-[11px] sm:text-xs text-text-secondary flex flex-wrap gap-3 sm:gap-4">
+                        <div className="mt-3 sm:mt-4 pt-3 border-t border-border/60 flex items-center justify-between gap-3">
+                          <div className="min-w-0 text-[11px] sm:text-xs text-text-secondary flex flex-wrap gap-x-3 sm:gap-x-4 gap-y-1">
                             <span className="font-medium text-text">{formatPrice(f.amount_paid)}</span>
                             {f.purchased_at && <span>{formatDate(f.purchased_at)}</span>}
                           </div>
@@ -440,5 +457,14 @@ export default function MyPurchases() {
         onClose={() => setUpgradeTarget(null)}
       />
     </div>
+  );
+}
+
+/** A tester account's INR 1 order (27 Nov 2026); only a tester ever has one. */
+function TestChip() {
+  return (
+    <span className="ml-1.5 inline-flex items-center align-middle rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-semibold text-text">
+      Test
+    </span>
   );
 }

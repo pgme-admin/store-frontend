@@ -110,7 +110,7 @@ export default function FormSubmissions() {
         <div className="flex gap-1 p-1 bg-surface-dim rounded-xl mb-6 sm:mb-8 max-w-xs">
           <button
             onClick={() => setActiveTab('forms')}
-            className={`flex-1 py-2 px-4 text-sm font-medium rounded-lg border-0 cursor-pointer transition-all ${
+            className={`flex-1 min-h-10 py-2 px-4 text-sm font-medium rounded-lg border-0 cursor-pointer transition-[color,background-color,box-shadow] ${
               activeTab === 'forms'
                 ? 'bg-white text-text shadow-sm'
                 : 'text-text-secondary hover:text-text'
@@ -120,7 +120,7 @@ export default function FormSubmissions() {
           </button>
           <button
             onClick={() => setActiveTab('submissions')}
-            className={`flex-1 py-2 px-4 text-sm font-medium rounded-lg border-0 cursor-pointer transition-all ${
+            className={`flex-1 min-h-10 py-2 px-4 text-sm font-medium rounded-lg border-0 cursor-pointer transition-[color,background-color,box-shadow] ${
               activeTab === 'submissions'
                 ? 'bg-white text-text shadow-sm'
                 : 'text-text-secondary hover:text-text'
@@ -153,9 +153,11 @@ export default function FormSubmissions() {
                   <input
                     type="text"
                     placeholder="Search forms by name or subject..."
+                    aria-label="Search forms"
+                    enterKeyHint="search"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-border/60 bg-white outline-none focus:border-primary transition-colors"
+                    className="w-full min-h-11 pl-10 pr-4 py-2.5 text-sm rounded-xl border border-border/60 bg-white outline-none focus:border-primary transition-colors"
                   />
                 </div>
               </div>

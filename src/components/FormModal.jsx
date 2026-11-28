@@ -178,7 +178,7 @@ export default function FormModal({ form, onClose }) {
 
       <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6">
         <div
-          className="relative w-full max-w-lg max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-hidden animate-modal-content flex flex-col"
+          className="relative w-full max-w-lg max-h-[85dvh] bg-white rounded-2xl shadow-2xl overflow-hidden animate-modal-content flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* ── Close button ── */}
@@ -186,7 +186,7 @@ export default function FormModal({ form, onClose }) {
             type="button"
             onClick={onClose}
             aria-label="Close form"
-            className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm hover:bg-white shadow-sm transition-colors cursor-pointer"
+            className="absolute top-2 right-2 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm hover:bg-white active:bg-white shadow-sm transition-colors cursor-pointer border-0"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -318,7 +318,7 @@ export default function FormModal({ form, onClose }) {
                               return (
                                 <label
                                   key={option}
-                                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl border cursor-pointer transition-all ${
+                                  className={`flex items-center gap-3 min-h-11 px-3.5 py-2.5 rounded-xl border cursor-pointer transition-colors ${
                                     selected
                                       ? 'border-purple-500 bg-purple-500/5 text-purple-600'
                                       : 'border-border/60 hover:border-purple-300 text-text-secondary'
@@ -340,7 +340,7 @@ export default function FormModal({ form, onClose }) {
                             {field.options.map((option) => (
                               <label
                                 key={option}
-                                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl border cursor-pointer transition-all ${
+                                className={`flex items-center gap-3 min-h-11 px-3.5 py-2.5 rounded-xl border cursor-pointer transition-colors ${
                                   responses[field.field_key] === option
                                     ? 'border-primary bg-primary/5 text-primary'
                                     : 'border-border/60 hover:border-primary/30 text-text-secondary'
@@ -363,10 +363,11 @@ export default function FormModal({ form, onClose }) {
                           <input
                             id={field.field_key}
                             type={field.type === 'email' ? 'email' : 'text'}
+                            autoComplete={field.type === 'email' ? 'email' : undefined}
                             value={responses[field.field_key] || ''}
                             onChange={(e) => handleChange(field.field_key, e.target.value)}
                             placeholder={field.label}
-                            className={`w-full px-3.5 py-2.5 text-sm rounded-xl border bg-white outline-none transition-colors ${
+                            className={`w-full min-h-11 px-3.5 py-2.5 text-sm rounded-xl border bg-white outline-none transition-colors ${
                               errors[field.field_key]
                                 ? 'border-red-400 focus:border-red-500'
                                 : 'border-border/60 focus:border-primary'
@@ -390,7 +391,7 @@ export default function FormModal({ form, onClose }) {
                   )}
 
                   {/* Terms and Conditions checkbox */}
-                  <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                  <label className="flex items-start gap-2.5 py-2.5 -mt-2.5 cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={agreedToTerms}

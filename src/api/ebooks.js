@@ -30,3 +30,15 @@ export async function verifyEbookPayment(paymentSessionId, paymentId, signature,
   });
   return data.data;
 }
+
+/** Short-lived link to the free sample file. No login or purchase needed. */
+export async function getEbookSample(bookId) {
+  const { data } = await client.get(`/books/${bookId}/sample`);
+  return data.data;
+}
+
+/** One page of the free sample, already sanitised by the server. */
+export async function getEbookSamplePreview(bookId, page = 1) {
+  const { data } = await client.get(`/books/${bookId}/sample/preview`, { params: { page } });
+  return data.data;
+}

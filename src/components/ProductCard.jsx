@@ -3,7 +3,7 @@ import PriceDisplay from './PriceDisplay';
 
 export default function ProductCard({ to, title, subtitle, price, originalPrice, isOnSale, imageUrl, badge, purchased }) {
   return (
-    <Link to={to} className="group block bg-white rounded-xl sm:rounded-2xl border border-border overflow-hidden hover:shadow-md hover:border-primary/15 transition-all duration-300 no-underline">
+    <Link to={to} className="group block bg-white rounded-xl sm:rounded-2xl border border-border overflow-hidden hover:shadow-md hover:border-primary/15 transition-[color,background-color,border-color,box-shadow,transform] duration-300 no-underline">
       {imageUrl && (
         <div className="aspect-[4/3] bg-surface-dim overflow-hidden relative">
           <img src={imageUrl} alt={title} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" />

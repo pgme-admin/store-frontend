@@ -6,6 +6,8 @@ import {
   verifyPackagePayment,
   createComboUpgradeOrder,
   createTierUpgradeOrder,
+  calculateComboUpgrade,
+  calculateTierUpgrade,
 } from '../api/packages';
 import { getEbookById, createEbookPaymentSession, verifyEbookPayment } from '../api/ebooks';
 import { getSessionById, createSessionPaymentSession, verifySessionPayment } from '../api/sessions';
@@ -13,9 +15,19 @@ import { getWorkshopById, createWorkshopPaymentSession, verifyWorkshopPayment } 
 import { getFormById, createFormPaymentSession } from '../api/forms';
 import { validateCoupon, listVisibleCoupons } from '../api/coupons';
 import BillingAddressForm from '../components/BillingAddressForm';
+import ProfileDetailsStep from '../components/ProfileDetailsStep';
 import TermsGateModal from '../components/TermsGateModal';
 import RecommendationRail from '../components/RecommendationRail';
 import { formatPrice } from '../components/PriceDisplay';
+import TierSelector from '../components/TierSelector';
+import {
+  getTiers,
+  parseTierIndex,
+  formatDuration,
+  formatAccess,
+  renewalCopy,
+  tierNameRepeatsDuration,
+} from '../utils/packageTiers';
 
 const PURCHASE_TYPE = { packages: 'package', ebooks: 'ebook', sessions: 'session', workshops: 'workshop', forms: 'form' };
 
@@ -23,12 +35,24 @@ export default function Checkout() {
   const { type, id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
-  const tierIndex = location.state?.tierIndex ?? 0;
+  const [searchParams, setSearchParams] = useSearchParams();
+  // The chosen tier lives in the URL (?tier=) so a reload, a sign-in bounce or
+  // a shared link keeps the same plan and price. Navigation state is still
+  // read for links built before this change. A missing or invalid tier is
+  // never replaced by tier 0 — the customer is asked to choose (see below).
+  const tierParam = searchParams.get('tier');
+  const stateTier = location.state?.tierIndex;
+  const rawTier = tierParam ?? (stateTier != null ? String(stateTier) : null);
   // 'combo' = complete-your-set upgrade, 'tier' = longer tier of a package
   // already owned. Both credit the customer's existing purchase(s).
-  const upgradeMode = location.state?.upgradeMode || null;
-  const upgradeQuote = location.state?.upgradeQuote || null;
+  const modeParam = searchParams.get('mode');
+  const upgradeMode =
+    modeParam === 'combo' || modeParam === 'tier' ? modeParam : location.state?.upgradeMode || null;
+  // The quote arrives in navigation state when we came from a package page;
+  // after a reload it is re-fetched for the tier in the URL.
+  const [upgradeQuote, setUpgradeQuote] = useState(location.state?.upgradeQuote || null);
+  const [upgradeQuoteError, setUpgradeQuoteError] = useState('');
+  const [pendingTier, setPendingTier] = useState(null);
   // Form checkout: read from URL search params (survives page reload / bank redirects)
   // Falls back to location.state for backward compat
   const submissionId = searchParams.get('submission_id') || location.state?.submissionId;
@@ -47,6 +71,8 @@ export default function Checkout() {
   // To rollback: remove taxInfo state, remove the setTaxInfo call in handleAddressSubmit,
   // and revert the Order Summary JSX to the old static disclaimer.
   const [taxInfo, setTaxInfo] = useState(null);
+  // A tester account's order (27 Nov 2026): charged INR 1, real price beside it
+  const [testInfo, setTestInfo] = useState(null);
   // [TAX BREAKDOWN CHANGE - 2026-03-24]
   // Added paymentSession state to split checkout into two visible steps:
   // Step 1: Address submit → create session → show tax breakdown with "Proceed to Pay" button
@@ -57,9 +83,10 @@ export default function Checkout() {
   // handleAddressSubmit (launch Zoho right after setTaxInfo), remove the "Proceed to Pay" button JSX.
   const [paymentSession, setPaymentSession] = useState(null);
 
-  // Coupon state
+  // Coupon state. Coupons are priced per package tier, so an applied coupon
+  // remembers the tier it was validated for and only counts on that tier.
   const [couponInput, setCouponInput] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState(null); // { code, discount, total }
+  const [couponState, setAppliedCoupon] = useState(null); // { code, discount, total, tierIndex }
   const [couponError, setCouponError] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
   const [visibleCoupons, setVisibleCoupons] = useState([]);
@@ -111,11 +138,83 @@ export default function Checkout() {
     })();
   }, [type, id]);
 
+  // Fold an old state-only tier/mode into the URL once, so a reload keeps it.
+  useEffect(() => {
+    if (type !== 'packages' || tierParam != null || stateTier == null) return;
+    const next = new URLSearchParams(searchParams);
+    next.set('tier', String(stateTier));
+    if (upgradeMode && !modeParam) next.set('mode', upgradeMode);
+    setSearchParams(next, { replace: true, state: location.state });
+  }, [type, tierParam, stateTier]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Resolve the tier against the loaded package. Packages without tiers keep
+  // the existing contract of sending tier_index 0 (the backend ignores it).
+  const productTiers = product?._type === 'packages' ? getTiers(product) : null;
+  let tierIndex = 0;
+  let tierInvalid = false;
+  if (type === 'packages' && product && productTiers) {
+    const parsed = parseTierIndex(product, rawTier);
+    if (parsed != null) tierIndex = parsed;
+    else if (rawTier == null && productTiers.length === 1) tierIndex = 0;
+    else {
+      tierIndex = null;
+      tierInvalid = true;
+    }
+  }
+  // Package prices depend on the tier, so nothing tier-priced (coupons, the
+  // upgrade quote) is fetched until the package has loaded and the tier is valid.
+  const tierReady = type !== 'packages' || (!!product && !tierInvalid);
+  const selectedPlan = productTiers && tierIndex != null ? productTiers[tierIndex] : null;
+  const appliedCoupon =
+    couponState && (type !== 'packages' || couponState.tierIndex === tierIndex) ? couponState : null;
+  const ownedPlan = type === 'packages' && !upgradeMode ? product?.current_tier || null : null;
+  const isRenewal = type === 'packages' && !upgradeMode && !!(product?.is_enrolled || product?.current_tier);
+  const planDurationDays = selectedPlan ? selectedPlan.duration_days : product?.duration_days;
+
+  // After a reload the upgrade quote is gone from navigation state; price it
+  // again for the tier in the URL rather than charging a different amount.
+  useEffect(() => {
+    if (!upgradeMode || upgradeQuote || !tierReady || type !== 'packages') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const quote =
+          upgradeMode === 'combo'
+            ? await calculateComboUpgrade(id, tierIndex)
+            : await calculateTierUpgrade(id, tierIndex);
+        if (!cancelled) setUpgradeQuote(quote);
+      } catch (err) {
+        if (!cancelled) {
+          setUpgradeQuoteError(
+            err.response?.data?.message || 'This upgrade offer is no longer available for your account.'
+          );
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [upgradeMode, upgradeQuote, tierReady, type, id, tierIndex]);
+
+  const choosePlan = (idx) => {
+    if (idx == null) return;
+    const next = new URLSearchParams(searchParams);
+    next.set('tier', String(idx));
+    setAppliedCoupon(null);
+    setCouponError('');
+    setPaymentSession(null);
+    setTaxInfo(null);
+    setUpgradeQuote(null);
+    setUpgradeQuoteError('');
+    setSearchParams(next, { replace: true });
+  };
+
   // Fetch admin-marked-visible coupons for this product, shown as suggestion
   // chips so customers don't need to already know a code.
   useEffect(() => {
     const purchaseType = PURCHASE_TYPE[type];
     if (!purchaseType || (type === 'forms' && !submissionId)) return;
+    if (!tierReady) return;
     (async () => {
       try {
         const payload = { purchase_type: purchaseType, product_id: id };
@@ -126,7 +225,7 @@ export default function Checkout() {
         setVisibleCoupons([]);
       }
     })();
-  }, [type, id, tierIndex, submissionId]);
+  }, [type, id, tierIndex, submissionId, tierReady]);
 
   const applyVisibleCoupon = (code) => {
     setCouponInput(code);
@@ -171,7 +270,7 @@ export default function Checkout() {
       if (type === 'packages') payload.tier_index = tierIndex;
       const res = await validateCoupon(payload);
       if (res.valid && res.beneficial) {
-        setAppliedCoupon({ code: res.code, discount: res.coupon_discount, total: res.estimated_total });
+        setAppliedCoupon({ code: res.code, discount: res.coupon_discount, total: res.estimated_total, tierIndex });
         setCouponError('');
       } else {
         setAppliedCoupon(null);
@@ -192,6 +291,10 @@ export default function Checkout() {
   };
 
   const handleAddressSubmit = async (billingAddress) => {
+    if (!tierReady || (type === 'packages' && tierIndex == null)) {
+      setError('Choose a plan before continuing.');
+      return;
+    }
     setPaying(true);
     setError('');
 
@@ -250,6 +353,9 @@ export default function Checkout() {
           tax: Math.round((sessionData.amount - (sessionData.base_amount - discount)) * 100) / 100,
         });
       }
+      setTestInfo(sessionData.is_test
+        ? { price: sessionData.test_price ?? sessionData.amount, list: sessionData.list_amount ?? null, coupon: sessionData.list_coupon_code || null }
+        : null);
       // Don't launch Zoho yet — let the user review the breakdown first
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Payment failed';
@@ -333,6 +439,78 @@ export default function Checkout() {
     return <div className="text-center py-12 text-error">{error}</div>;
   }
 
+  // No valid tier in the URL: ask, rather than silently charging tier 0.
+  if (type === 'packages' && tierInvalid) {
+    const choosing = pendingTier != null ? pendingTier : null;
+    return (
+      <div className="animate-fade-in-up">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-10">
+            <div className="w-1 sm:w-1.5 h-8 sm:h-10 bg-primary rounded-full" />
+            <h1 className="font-display text-xl sm:text-2xl lg:text-3xl font-bold text-text">Checkout</h1>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-border p-5 sm:p-6 lg:p-8">
+            <p className="text-sm sm:text-base font-semibold text-text">{getProductName()}</p>
+            <p className="text-xs sm:text-sm text-text-secondary mt-1 mb-5">
+              {rawTier != null
+                ? 'The plan in this link is no longer available. Choose a plan to continue.'
+                : 'Choose a plan to continue.'}
+            </p>
+            <TierSelector
+              tiers={productTiers}
+              selected={choosing}
+              onSelect={setPendingTier}
+              ownedTierIndex={parseTierIndex(product, product?.current_tier?.tier_index)}
+            />
+            <button
+              type="button"
+              onClick={() => choosePlan(choosing)}
+              disabled={choosing == null}
+              className="w-full mt-6 btn-primary py-3 sm:py-3.5 text-sm sm:text-base font-semibold rounded-xl disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {choosing == null
+                ? 'Select a plan'
+                : `Continue with ${formatDuration(productTiers[choosing].duration_days) || productTiers[choosing].name}`}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Upgrade checkout reloaded and the offer no longer applies.
+  if (upgradeMode && upgradeQuoteError && !upgradeQuote) {
+    return (
+      <div className="max-w-xl mx-auto text-center py-12">
+        <p className="text-sm text-error mb-4">{upgradeQuoteError}</p>
+        <button
+          type="button"
+          onClick={() => navigate(`/packages/${id}${tierIndex != null ? `?tier=${tierIndex}` : ''}`, { replace: true })}
+          className="btn-outline !py-2.5 !px-5 text-sm"
+        >
+          Back to the package
+        </button>
+      </div>
+    );
+  }
+
+  if (upgradeMode && !upgradeQuote) {
+    return (
+      <div className="flex justify-center py-20">
+        <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const planLabel =
+    type === 'packages'
+      ? [
+          formatDuration(planDurationDays) ? `${formatDuration(planDurationDays)} plan` : selectedPlan?.name || null,
+          selectedPlan?.name && !tierNameRepeatsDuration(selectedPlan) && formatDuration(planDurationDays) ? selectedPlan.name : null,
+        ].filter(Boolean).join(' · ')
+      : '';
+  const renewNote = isRenewal ? renewalCopy(planDurationDays, ownedPlan?.expires_at) : '';
+
   return (
     <div className="animate-fade-in-up">
       <div className="max-w-4xl mx-auto">
@@ -383,7 +561,7 @@ export default function Checkout() {
                     </svg>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm sm:text-base font-semibold text-text truncate">{getProductName()}</p>
+                    <p className="text-sm sm:text-base font-semibold text-text break-words">{getProductName()}</p>
                     <p className="text-xs sm:text-sm text-text-tertiary mt-0.5 capitalize">
                       {type === 'ebooks'
                         ? 'E-Book'
@@ -393,8 +571,9 @@ export default function Checkout() {
                             ? `Workshop · ${product?.day_count || 0} days`
                             : type === 'forms'
                               ? 'Registration'
-                              : 'Package'}
+                              : `${isRenewal ? 'Renewal' : 'Package'}${planLabel ? ` · ${planLabel}` : ''}`}
                     </p>
+                    {renewNote && <p className="text-xs text-text-secondary mt-1.5 leading-relaxed">{renewNote}</p>}
                   </div>
                 </div>
 
@@ -419,6 +598,7 @@ export default function Checkout() {
                       <span className="text-base sm:text-lg font-bold text-text">Total</span>
                       <span className="text-base sm:text-lg font-bold text-primary">{formatPrice(taxInfo.total)}</span>
                     </div>
+                    <TesterPriceLine info={testInfo} />
                   </div>
                 )}
 
@@ -448,7 +628,7 @@ export default function Checkout() {
                 <button
                   onClick={() => { setPaymentSession(null); setTaxInfo(null); }}
                   disabled={paying}
-                  className="w-full mt-3 text-xs sm:text-sm text-text-tertiary hover:text-primary transition-colors disabled:opacity-40"
+                  className="w-full mt-2 min-h-11 text-xs sm:text-sm text-text-tertiary hover:text-primary transition-colors disabled:opacity-40"
                 >
                   Change billing address
                 </button>
@@ -456,12 +636,21 @@ export default function Checkout() {
             ) : (
               /* Step 1: Billing address form */
               <div className="bg-white rounded-xl shadow-sm border border-border p-5 sm:p-6 lg:p-8">
-                <BillingAddressForm
-                  onSubmit={handleAddressSubmit}
-                  loading={paying}
-                  termsAccepted={termsAccepted}
-                  onOpenTerms={() => setShowTermsModal(true)}
-                />
+                {renewNote && (
+                  <div className="mb-5 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+                    <p className="text-xs sm:text-sm font-semibold text-text">You are renewing this package</p>
+                    <p className="text-xs text-text-secondary mt-0.5 leading-relaxed">{renewNote}</p>
+                  </div>
+                )}
+                {/* Missing required profile details (admin rules) are asked first, once */}
+                <ProfileDetailsStep>
+                  <BillingAddressForm
+                    onSubmit={handleAddressSubmit}
+                    loading={paying}
+                    termsAccepted={termsAccepted}
+                    onOpenTerms={() => setShowTermsModal(true)}
+                  />
+                </ProfileDetailsStep>
               </div>
             )}
           </div>
@@ -485,7 +674,26 @@ export default function Checkout() {
                 */}
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-3 py-3 sm:py-3.5 border-b border-border">
-                  <span className="text-xs sm:text-sm text-text-secondary leading-snug">{getProductName()}</span>
+                  <div className="min-w-0">
+                    <span className="text-xs sm:text-sm text-text-secondary leading-snug block">{getProductName()}</span>
+                    {type === 'packages' && planLabel && (
+                      <span className="text-xs sm:text-sm font-semibold text-text block mt-1">
+                        {isRenewal ? 'Renewal · ' : ''}{planLabel}
+                      </span>
+                    )}
+                    {type === 'packages' && selectedPlan && formatAccess(planDurationDays) && (
+                      <span className="text-[11px] text-text-tertiary block mt-0.5">{formatAccess(planDurationDays)}</span>
+                    )}
+                    {type === 'packages' && productTiers && productTiers.length > 1 && !paymentSession && (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/packages/${id}?tier=${tierIndex}`)}
+                        className="inline-flex items-center min-h-10 -mb-2 text-[11px] sm:text-xs font-semibold text-primary hover:underline"
+                      >
+                        Change plan
+                      </button>
+                    )}
+                  </div>
                   <span className="text-sm sm:text-base font-bold text-primary whitespace-nowrap">
                     {formatPrice(upgradeQuote ? upgradeQuote.combo?.price ?? getDisplayPrice() : getDisplayPrice())}
                   </span>
@@ -555,7 +763,7 @@ export default function Checkout() {
                               type="button"
                               onClick={() => applyVisibleCoupon(c.code)}
                               disabled={couponLoading}
-                              className="text-xs font-semibold text-primary border border-primary rounded-full px-3 py-1.5 hover:bg-primary hover:text-white transition-colors disabled:opacity-50 shrink-0"
+                              className="inline-flex items-center min-h-10 text-xs font-semibold text-primary border border-primary rounded-full px-3.5 py-1.5 hover:bg-primary hover:text-white active:bg-primary active:text-white transition-colors disabled:opacity-50 shrink-0"
                             >
                               {couponLoading ? '...' : 'Apply'}
                             </button>
@@ -586,7 +794,7 @@ export default function Checkout() {
                           type="button"
                           onClick={handleRemoveCoupon}
                           aria-label="Remove coupon"
-                          className="w-6 h-6 rounded-full flex items-center justify-center text-text-tertiary hover:text-error hover:bg-error/10 transition-colors shrink-0"
+                          className="w-10 h-10 -my-2 -mr-2 rounded-full flex items-center justify-center text-text-tertiary hover:text-error hover:bg-error/10 active:bg-error/10 transition-colors shrink-0"
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -601,13 +809,17 @@ export default function Checkout() {
                           onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
                           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleApplyCoupon(); } }}
                           placeholder="Coupon code"
-                          className="flex-1 min-w-0 px-3 py-2 text-xs uppercase border border-border rounded-lg focus:outline-none focus:border-primary"
+                          aria-label="Coupon code"
+                          autoComplete="off"
+                          autoCapitalize="characters"
+                          spellCheck={false}
+                          className="flex-1 min-w-0 min-h-11 px-3 py-2 text-xs uppercase border border-border rounded-lg focus:outline-none focus:border-primary"
                         />
                         <button
                           type="button"
                           onClick={handleApplyCoupon}
                           disabled={couponLoading || !couponInput.trim()}
-                          className="px-3.5 py-2 text-xs font-semibold text-primary border border-primary rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/5 transition-colors shrink-0"
+                          className="min-h-11 px-4 py-2 text-xs font-semibold text-primary border border-primary rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/5 active:bg-primary/10 transition-colors shrink-0"
                         >
                           {couponLoading ? '...' : 'Apply'}
                         </button>
@@ -637,7 +849,12 @@ export default function Checkout() {
                       <span className="text-sm sm:text-base font-bold text-text">Total</span>
                       <span className="text-sm sm:text-base font-bold text-primary">{formatPrice(taxInfo.total)}</span>
                     </div>
+                    <TesterPriceLine info={testInfo} />
                   </>
+                ) : product?.is_test ? (
+                  <p className="text-[11px] sm:text-xs text-text mt-1 inline-flex items-center rounded-full bg-warning/15 px-2 py-0.5 font-semibold">
+                    Tester price: {formatPrice(product.test_price ?? 1)} at payment
+                  </p>
                 ) : (
                   <p className="text-[11px] sm:text-xs text-text-tertiary mt-1">
                     * GST (18%) will be added at payment
@@ -666,6 +883,20 @@ export default function Checkout() {
         />
       </div>
     </div>
+  );
+}
+
+/**
+ * A tester account (27 Nov 2026) pays INR 1 for every checkout, whatever the
+ * price, GST or coupon. The order answer says so only for a tester.
+ */
+function TesterPriceLine({ info }) {
+  if (!info) return null;
+  return (
+    <p className="text-[11px] sm:text-xs text-text-secondary leading-relaxed rounded-lg bg-warning/15 px-2.5 py-2">
+      <span className="font-semibold text-text">Tester price: {formatPrice(info.price)}.</span>
+      {info.list != null ? ` A real buyer pays ${formatPrice(info.list)} before GST${info.coupon ? ` (coupon ${info.coupon} checked, not used up)` : ''}.` : ''}
+    </p>
   );
 }
 

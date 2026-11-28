@@ -6,7 +6,7 @@ export default function FormCard({ form, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="group relative flex flex-col w-full text-left bg-white rounded-2xl border border-border/60 overflow-hidden hover:shadow-lg hover:border-primary/20 transition-all duration-200 cursor-pointer"
+      className="tap-press group relative flex flex-col w-full h-full text-left bg-white rounded-2xl border border-border/60 overflow-hidden hover:shadow-lg hover:border-primary/20 duration-200 cursor-pointer"
     >
       {/* Header accent / Banner */}
       {form.banner_url ? (

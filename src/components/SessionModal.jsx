@@ -136,18 +136,20 @@ export default function SessionModal({ session: listSession, onClose }) {
       />
 
       {/* Centered container */}
-      <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6">
+      <div className="absolute inset-0 flex items-center sm:items-start justify-center p-4 sm:p-6 sm:pt-[7dvh]">
         <div className="w-full flex items-center justify-center">
           {/* Modal card */}
           <div
-            className="relative w-full max-w-lg max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-clip animate-modal-content flex flex-col"
+            className="relative w-full max-w-lg h-[85dvh] sm:h-auto sm:max-h-[85dvh] bg-white rounded-2xl shadow-2xl overflow-clip animate-modal-content flex flex-col"
             onClick={(e) => e.stopPropagation()}
             onWheel={handleModalWheel}
           >
             {/* Close button */}
             <button
               onClick={onClose}
-              className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm flex items-center justify-center transition-colors cursor-pointer border-0"
+              type="button"
+              aria-label="Close"
+              className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 z-10 w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 active:bg-white/30 backdrop-blur-sm flex items-center justify-center transition-colors cursor-pointer border-0"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
                 <path d="M18 6L6 18M6 6l12 12" />
@@ -212,11 +214,14 @@ export default function SessionModal({ session: listSession, onClose }) {
                 <>
                   {/* Thumbnail */}
                   {s.thumbnail_url && (
-                    <div className="rounded-xl overflow-hidden">
+                    <div className="rounded-xl overflow-hidden aspect-video max-h-56 w-full bg-surface-dim">
                       <img
                         src={s.thumbnail_url}
                         alt={s.title}
-                        className="w-full h-auto max-h-56 object-cover"
+                        width="1280"
+                        height="720"
+                        decoding="async"
+                        className="w-full h-full object-cover"
                       />
                     </div>
                   )}

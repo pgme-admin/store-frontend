@@ -37,7 +37,7 @@ function WorkshopCard({ workshop, purchased, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="group relative flex flex-col w-full text-left bg-white rounded-2xl border border-border/60 overflow-hidden hover:shadow-lg hover:border-primary/20 transition-all duration-200 cursor-pointer"
+      className="group relative flex flex-col w-full text-left bg-white rounded-2xl border border-border/60 overflow-hidden hover:shadow-lg hover:border-primary/20 transition-[color,background-color,border-color,box-shadow,transform] duration-200 cursor-pointer"
     >
       {/* Cover */}
       <div className="relative bg-surface-dim">
@@ -256,7 +256,7 @@ export default function WorkshopList() {
           <button
             type="button"
             onClick={() => setSpecialtyOpen(!specialtyOpen)}
-            className="w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-4 sm:py-5 bg-[#d6e4ff] rounded-2xl border border-[#d6e4ff] hover:border-primary/30 transition-all duration-200 cursor-pointer text-left"
+            className="w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-4 sm:py-5 bg-[#d6e4ff] rounded-2xl border border-[#d6e4ff] hover:border-primary/30 transition-[color,background-color,border-color,box-shadow,transform] duration-200 cursor-pointer text-left"
           >
             <div className="min-w-0">
               <p className="text-[11px] sm:text-xs font-medium text-text-tertiary uppercase tracking-wider mb-1">Your Specialty</p>
@@ -285,7 +285,7 @@ export default function WorkshopList() {
                       key={id}
                       type="button"
                       onClick={() => handleSubjectSelect(subject)}
-                      className={`flex items-center gap-3 px-4 py-3 sm:py-3.5 rounded-xl text-left transition-all duration-150 cursor-pointer border ${
+                      className={`flex items-center gap-3 px-4 py-3 sm:py-3.5 rounded-xl text-left transition-[color,background-color,border-color,box-shadow,transform] duration-150 cursor-pointer border ${
                         isActive
                           ? 'bg-primary/5 border-primary/20 text-primary'
                           : 'bg-transparent border-transparent hover:bg-surface-dim text-text-secondary hover:text-text'

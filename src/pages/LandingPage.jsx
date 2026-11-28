@@ -2,20 +2,41 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getPackageTypes } from '../api/packages';
 import Header from '../components/Header';
+import { lockPageScroll } from '../lib/scrollLock';
+
+const footerLink = 'flex items-center min-h-10 text-sm text-gray-500 hover:text-[#0000C8] active:text-[#0000C8] no-underline transition-colors';
 
 export default function LandingPage() {
   const [packageTypes, setPackageTypes] = useState([]);
+  const [typesLoading, setTypesLoading] = useState(true);
   const [playingTrailer, setPlayingTrailer] = useState(null);
   const [activeFeature, setActiveFeature] = useState(null);
 
   useEffect(() => {
     getPackageTypes()
       .then((types) => setPackageTypes(types.filter((t) => t.trailer_video_url)))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setTypesLoading(false));
   }, []);
 
+  // An open popup keeps the page behind it still; Escape closes it.
+  const popupOpen = !!(activeFeature || playingTrailer);
+  useEffect(() => {
+    if (!popupOpen) return undefined;
+    const unlock = lockPageScroll();
+    const onKey = (e) => {
+      if (e.key === 'Escape') { setActiveFeature(null); setPlayingTrailer(null); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => { unlock(); document.removeEventListener('keydown', onKey); };
+  }, [popupOpen]);
+
+  const featureKeys = (key) => (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveFeature(key); }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#f5f5f5]">
+    <div className="min-h-dvh flex flex-col bg-[#f5f5f5]">
 
       <Header />
 
@@ -88,18 +109,24 @@ export default function LandingPage() {
                   {/* Download Our App */}
                   <div className="mt-auto">
                     <p className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-3">Download Our App</p>
-                    <div className="flex items-end gap-1">
-                      {/* Google Play — badge PNG has built-in padding so use h-16 */}
+                    {/* Both badges share the card's width: on a narrow phone they
+                        scale down together instead of the second being cut off.
+                        Sizes are reserved so nothing moves when they load. */}
+                    <div className="flex items-center gap-1 min-w-0">
+                      {/* Google Play — badge PNG has built-in padding so it is drawn taller */}
                       <a
                         href="https://play.google.com/store/apps/details?id=com.pgme.app"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="no-underline hover:opacity-90 transition-opacity"
+                        className="no-underline hover:opacity-90 transition-opacity min-w-0 shrink basis-[196px]"
                       >
                         <img
                           src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png"
                           alt="Get it on Google Play"
-                          className="h-[76px] w-auto"
+                          width="646"
+                          height="250"
+                          decoding="async"
+                          className="block w-full h-auto max-w-[196px]"
                         />
                       </a>
                       {/* App Store */}
@@ -107,12 +134,15 @@ export default function LandingPage() {
                         href="https://apps.apple.com/in/app/pgme-medical-education/id6759380549"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="no-underline hover:opacity-90 transition-opacity mb-[11px]"
+                        className="no-underline hover:opacity-90 transition-opacity min-w-0 shrink basis-[162px]"
                       >
                         <img
                           src="https://developer.apple.com/app-store/marketing/guidelines/images/badge-download-on-the-app-store.svg"
                           alt="Download on the App Store"
-                          className="h-[54px] w-auto"
+                          width="120"
+                          height="40"
+                          decoding="async"
+                          className="block w-full h-auto max-w-[162px]"
                         />
                       </a>
                     </div>
@@ -140,30 +170,35 @@ export default function LandingPage() {
             {/* Video Trailers Card */}
             <div className="md:col-span-9 lg:col-span-10 rounded-3xl bg-[#d6e4ff] p-2.5 sm:p-3 relative overflow-hidden">
               <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+                {typesLoading && [0, 1].map((i) => (
+                  <div key={`ph-${i}`} aria-hidden="true" className="rounded-2xl bg-[#0000C8]/10" style={{ aspectRatio: '4/3' }} />
+                ))}
                 {packageTypes.slice(0, 2).map((pt) => {
                   const route = '/packages';
                   return (
                     <div key={pt.type_id || pt._id} className="relative rounded-2xl overflow-hidden group">
                       {pt.thumbnail_url ? (
-                        <img src={pt.thumbnail_url} alt={pt.name} className="w-full object-cover" style={{ aspectRatio: '4/3' }} />
+                        <img src={pt.thumbnail_url} alt={pt.name} width="400" height="300" decoding="async" className="block w-full h-auto object-cover" style={{ aspectRatio: '4/3' }} />
                       ) : (
                         <div className="w-full bg-[#0000C8]/20" style={{ aspectRatio: '4/3' }} />
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
                       <button
+                        type="button"
                         onClick={() => setPlayingTrailer(pt)}
+                        aria-label={`Play the ${pt.name} trailer`}
                         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-white/20 border border-white/40 flex items-center justify-center backdrop-blur-md cursor-pointer hover:bg-white/30 transition-colors"
                       >
                         <svg viewBox="0 0 24 24" fill="white" className="w-4 h-4 sm:w-5 sm:h-5 ml-0.5">
                           <path d="M8 5v14l11-7z" />
                         </svg>
                       </button>
-                      <div className="absolute bottom-0 inset-x-0 p-3 flex items-end justify-between">
-                        <div>
+                      <div className="absolute bottom-0 inset-x-0 p-3 flex items-end justify-between gap-2">
+                        <div className="min-w-0">
                           <span className="text-white text-sm sm:text-base font-bold block">{pt.name}</span>
                           <span className="text-white/50 text-[10px] sm:text-xs">Watch Trailer</span>
                         </div>
-                        <Link to={route} className="no-underline flex-shrink-0">
+                        <Link to={route} aria-label={`Browse ${pt.name} packages`} className="no-underline flex-shrink-0 rounded-full">
                           <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white/20 border border-white/40 flex items-center justify-center hover:bg-white/30 transition-colors">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M7 17L17 7" />
@@ -199,7 +234,10 @@ export default function LandingPage() {
             {/* Card 1 */}
             <div
               onClick={() => setActiveFeature('ebooks')}
-              className="group rounded-3xl bg-white border border-gray-200 p-7 sm:p-8 hover:shadow-lg hover:border-[#0000C8]/20 transition-all duration-300 cursor-pointer"
+              onKeyDown={featureKeys('ebooks')}
+              role="button"
+              tabIndex={0}
+              className="tap-press group rounded-3xl bg-white border border-gray-200 p-7 sm:p-8 hover:shadow-lg hover:border-[#0000C8]/20 duration-300 cursor-pointer"
             >
               <div className="w-14 h-14 rounded-2xl bg-[#0000C8]/5 flex items-center justify-center mb-6">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0000C8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -218,7 +256,10 @@ export default function LandingPage() {
             {/* Card 2 */}
             <div
               onClick={() => setActiveFeature('sessions')}
-              className="group rounded-3xl bg-[#0000C8] p-7 sm:p-8 text-white hover:shadow-lg hover:shadow-[#0000C8]/20 transition-all duration-300 cursor-pointer"
+              onKeyDown={featureKeys('sessions')}
+              role="button"
+              tabIndex={0}
+              className="tap-press group rounded-3xl bg-[#0000C8] p-7 sm:p-8 text-white hover:shadow-lg hover:shadow-[#0000C8]/20 duration-300 cursor-pointer"
             >
               <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center mb-6">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -235,7 +276,10 @@ export default function LandingPage() {
             {/* Card 3 */}
             <div
               onClick={() => setActiveFeature('packages')}
-              className="group rounded-3xl bg-white border border-gray-200 p-7 sm:p-8 hover:shadow-lg hover:border-[#0000C8]/20 transition-all duration-300 cursor-pointer"
+              onKeyDown={featureKeys('packages')}
+              role="button"
+              tabIndex={0}
+              className="tap-press group rounded-3xl bg-white border border-gray-200 p-7 sm:p-8 hover:shadow-lg hover:border-[#0000C8]/20 duration-300 cursor-pointer"
             >
               <div className="w-14 h-14 rounded-2xl bg-[#0000C8]/5 flex items-center justify-center mb-6">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0000C8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -352,7 +396,7 @@ export default function LandingPage() {
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link
                   to="/home"
-                  className="group inline-flex items-center gap-3 px-8 sm:px-10 py-3.5 sm:py-4 text-sm sm:text-base font-semibold text-white bg-[#0000C8] rounded-full no-underline transition-all duration-300 hover:shadow-[0_4px_24px_rgba(0,0,200,0.2)] hover:scale-105"
+                  className="group inline-flex items-center justify-center gap-3 min-h-12 px-8 sm:px-10 py-3.5 sm:py-4 text-sm sm:text-base font-semibold text-white bg-[#0000C8] rounded-full no-underline transition-[box-shadow,transform] duration-300 hover:shadow-[0_4px_24px_rgba(0,0,200,0.2)] hover:scale-105 active:scale-[0.97]"
                 >
                   Explore Courses
                   <svg
@@ -365,7 +409,7 @@ export default function LandingPage() {
                 </Link>
                 <Link
                   to="/contact"
-                  className="inline-flex items-center gap-2 px-8 sm:px-10 py-3.5 sm:py-4 text-sm sm:text-base font-semibold text-white border border-white/20 rounded-full no-underline transition-all duration-300 hover:bg-white/10 hover:border-white/40"
+                  className="inline-flex items-center justify-center gap-2 min-h-12 px-8 sm:px-10 py-3.5 sm:py-4 text-sm sm:text-base font-semibold text-[#0000C8] border border-[#0000C8]/25 bg-white/60 rounded-full no-underline transition-colors duration-300 hover:bg-white hover:border-[#0000C8]/40 active:bg-white"
                 >
                   Contact Us
                 </Link>
@@ -377,14 +421,12 @@ export default function LandingPage() {
 
       {/* ── Footer ── */}
       <footer className="relative z-10 border-t border-gray-200 bg-white">
-        <div className="max-w-[1400px] 2xl:max-w-[1700px] mx-auto px-5 sm:px-8 lg:px-10 py-12 sm:py-16">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-10 md:gap-12">
+        <div className="max-w-[1400px] 2xl:max-w-[1700px] mx-auto px-5 sm:px-8 lg:px-10 pt-12 sm:pt-16 pb-[calc(3rem+env(safe-area-inset-bottom,0px))] sm:pb-16">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-x-10 gap-y-8 md:gap-12">
             {/* Brand */}
             <div className="col-span-2 md:col-span-2">
               <div className="flex items-center gap-2.5 mb-5">
-                <div className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center shadow-sm">
-                  <img src="/logo.png" alt="PGME" className="w-6 h-6 object-contain" />
-                </div>
+                <img src="/pgme-mark.svg" alt="" aria-hidden="true" width="40" height="40" decoding="async" className="w-10 h-10 shrink-0 rounded-full shadow-sm ring-1 ring-black/5" />
                 <span className="text-lg font-bold text-gray-900 font-display">PGME</span>
               </div>
               <p className="text-sm text-gray-500 leading-relaxed max-w-xs">
@@ -394,36 +436,36 @@ export default function LandingPage() {
 
             {/* Browse */}
             <div>
-              <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wider mb-5">Browse</h4>
-              <div className="space-y-3.5">
-                <Link to="/packages" className="block text-sm text-gray-500 hover:text-[#0000C8] no-underline transition-colors">Course Packages</Link>
-                <Link to="/ebooks" className="block text-sm text-gray-500 hover:text-[#0000C8] no-underline transition-colors">eBooks</Link>
-                <Link to="/sessions" className="block text-sm text-gray-500 hover:text-[#0000C8] no-underline transition-colors">Live Sessions</Link>
+              <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wider mb-2.5">Browse</h4>
+              <div>
+                <Link to="/packages" className={footerLink}>Course Packages</Link>
+                <Link to="/ebooks" className={footerLink}>eBooks</Link>
+                <Link to="/sessions" className={footerLink}>Live Sessions</Link>
               </div>
             </div>
 
             {/* Legal */}
             <div>
-              <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wider mb-5">Legal</h4>
-              <div className="space-y-3.5">
-                <Link to="/terms-and-conditions" className="block text-sm text-gray-500 hover:text-[#0000C8] no-underline transition-colors">Terms & Conditions</Link>
-                <Link to="/refund-policy" className="block text-sm text-gray-500 hover:text-[#0000C8] no-underline transition-colors">Refund Policy</Link>
-                <Link to="/privacy-policy" className="block text-sm text-gray-500 hover:text-[#0000C8] no-underline transition-colors">Privacy Policy</Link>
+              <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wider mb-2.5">Legal</h4>
+              <div>
+                <Link to="/terms-and-conditions" className={footerLink}>Terms & Conditions</Link>
+                <Link to="/refund-policy" className={footerLink}>Refund Policy</Link>
+                <Link to="/privacy-policy" className={footerLink}>Privacy Policy</Link>
               </div>
             </div>
 
             {/* Company */}
             <div className="col-span-2 md:col-span-1">
-              <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wider mb-5">Company</h4>
-              <div className="space-y-3.5">
-                <Link to="/about" className="block text-sm text-gray-500 hover:text-[#0000C8] no-underline transition-colors">About Us</Link>
-                <Link to="/contact" className="block text-sm text-gray-500 hover:text-[#0000C8] no-underline transition-colors">Contact Us</Link>
-                <Link to="/my-purchases" className="block text-sm text-gray-500 hover:text-[#0000C8] no-underline transition-colors">My Purchases</Link>
+              <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wider mb-2.5">Company</h4>
+              <div>
+                <Link to="/about" className={footerLink}>About Us</Link>
+                <Link to="/contact" className={footerLink}>Contact Us</Link>
+                <Link to="/my-purchases" className={footerLink}>My Purchases</Link>
               </div>
             </div>
           </div>
 
-          <div className="border-t border-gray-200 mt-10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="border-t border-gray-200 mt-10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
             <p className="text-sm text-gray-500">
               &copy; {new Date().getFullYear()} PGME Medical Education LLP. All rights reserved.
             </p>
@@ -494,18 +536,24 @@ export default function LandingPage() {
         const f = features[activeFeature];
         return (
           <div
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] animate-modal-backdrop"
             onClick={() => setActiveFeature(null)}
           >
             <div
-              className="relative w-full max-w-lg bg-white rounded-3xl overflow-hidden shadow-2xl"
+              role="dialog"
+              aria-modal="true"
+              aria-label={f.title}
+              data-lenis-prevent
+              className="relative w-full max-w-lg max-h-full bg-white rounded-3xl overflow-y-auto overscroll-contain shadow-2xl animate-modal-content"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
               <div className="bg-[#d6e4ff] p-6 sm:p-8">
                 <button
+                  type="button"
                   onClick={() => setActiveFeature(null)}
-                  className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/60 flex items-center justify-center cursor-pointer hover:bg-white transition-colors"
+                  aria-label="Close"
+                  className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/60 flex items-center justify-center cursor-pointer hover:bg-white active:bg-white transition-colors border-0"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0a0a2e" strokeWidth="2.5" strokeLinecap="round">
                     <path d="M18 6L6 18" /><path d="M6 6l12 12" />
@@ -535,7 +583,7 @@ export default function LandingPage() {
                 <Link
                   to={f.route}
                   onClick={() => setActiveFeature(null)}
-                  className="mt-6 w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-[#0000C8] text-white text-sm font-semibold rounded-full no-underline hover:bg-[#0000a0] transition-colors"
+                  className="mt-6 w-full inline-flex items-center justify-center gap-2 min-h-12 px-6 py-3.5 bg-[#0000C8] text-white text-sm font-semibold rounded-full no-underline hover:bg-[#0000a0] active:bg-[#0000a0] transition-colors"
                 >
                   Explore {f.title}
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -551,17 +599,22 @@ export default function LandingPage() {
       {/* Video Trailer Popup */}
       {playingTrailer && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-modal-backdrop"
           onClick={() => setPlayingTrailer(null)}
         >
           <div
-            className="relative w-full max-w-2xl rounded-2xl overflow-hidden bg-black"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${playingTrailer.name} trailer`}
+            className="relative w-full max-w-2xl rounded-2xl overflow-hidden bg-black animate-modal-content"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close button */}
             <button
+              type="button"
               onClick={() => setPlayingTrailer(null)}
-              className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/60 border border-white/20 flex items-center justify-center cursor-pointer hover:bg-black/80 transition-colors"
+              aria-label="Close trailer"
+              className="absolute top-2 right-2 z-10 w-10 h-10 rounded-full bg-black/60 border border-white/20 flex items-center justify-center cursor-pointer hover:bg-black/80 active:bg-black/80 transition-colors"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
                 <path d="M18 6L6 18" />
@@ -569,14 +622,14 @@ export default function LandingPage() {
               </svg>
             </button>
             {/* Title */}
-            <div className="absolute top-3 left-4 z-10">
+            <div className="absolute top-3 left-4 right-14 z-10 truncate">
               <span className="text-white text-sm font-semibold">{playingTrailer.name} — Trailer</span>
             </div>
             <video
               src={playingTrailer.trailer_video_url}
               autoPlay
               controls
-              className="w-full aspect-video"
+              className="block w-full aspect-video max-h-[calc(100dvh-2rem)]"
             />
           </div>
         </div>

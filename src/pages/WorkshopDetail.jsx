@@ -239,6 +239,7 @@ export default function WorkshopDetail() {
   })();
 
   return (
+    <>
     <div className="animate-fade-in-up">
       <div className="max-w-5xl 2xl:max-w-6xl mx-auto">
         {/* Hero */}
@@ -290,8 +291,8 @@ export default function WorkshopDetail() {
         )}
 
         {workshop.thumbnail_url && (
-          <div className="rounded-2xl overflow-hidden mb-6 sm:mb-8">
-            <img src={workshop.thumbnail_url} alt={workshop.title} className="w-full h-auto max-h-80 object-cover" />
+          <div className="rounded-2xl overflow-hidden mb-6 sm:mb-8 aspect-video max-h-80 w-full bg-surface-dim">
+            <img src={workshop.thumbnail_url} alt={workshop.title} width="1280" height="720" decoding="async" className="w-full h-full object-cover" />
           </div>
         )}
 
@@ -309,8 +310,8 @@ export default function WorkshopDetail() {
                 </div>
                 <div className="h-2 rounded-full bg-surface-dim overflow-hidden">
                   <div
-                    className="h-full bg-primary rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(100, (workshop.days_attended / activeDays.length) * 100)}%` }}
+                    className="h-full w-full bg-primary rounded-full origin-left transition-transform duration-500"
+                    style={{ transform: `scaleX(${Math.min(1, workshop.days_attended / activeDays.length)})` }}
                   />
                 </div>
                 {workshop.certificate_enabled && (
@@ -628,8 +629,10 @@ export default function WorkshopDetail() {
         />
       </div>
 
+    </div>
+
       {/* Mobile sticky CTA */}
-      <div className="fixed bottom-0 left-0 right-0 glass-strong border-t border-border p-4 safe-area-inset-bottom lg:hidden z-40">
+      <div data-bottom-bar className="fixed bottom-0 left-0 right-0 glass-strong border-t border-border px-4 pt-4 pb-safe-4 lg:hidden z-40">
         <div className="max-w-7xl mx-auto">
           <CtaPanel
             compact
@@ -647,7 +650,7 @@ export default function WorkshopDetail() {
         </div>
       </div>
       <div className="h-24 lg:hidden" />
-    </div>
+    </>
   );
 }
 

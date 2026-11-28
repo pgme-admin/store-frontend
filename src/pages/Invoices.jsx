@@ -46,7 +46,8 @@ function DownloadButton({ invoiceId, invoiceNumber }) {
       onClick={handleDownload}
       disabled={downloading}
       title="Download PDF"
-      className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary-dark font-medium transition-colors cursor-pointer bg-primary/5 hover:bg-primary/10 border-0 px-3 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+      type="button"
+      className="inline-flex items-center gap-1.5 min-h-10 text-xs text-primary hover:text-primary-dark font-medium transition-colors cursor-pointer bg-primary/5 hover:bg-primary/10 active:bg-primary/10 border-0 px-3 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
     >
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -199,12 +200,14 @@ export default function Invoices() {
         ) : (
           <>
             {/* Filter tabs */}
-            <div className="flex items-center gap-1 mb-4 bg-surface-dim p-1 rounded-xl w-fit">
+            <div className="flex items-center gap-1 mb-4 bg-surface-dim p-1 rounded-xl w-fit max-w-full overflow-x-auto overscroll-x-contain scrollbar-hide">
               {filterOptions.map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => setFilter(opt.value)}
-                  className={`px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-lg border-0 cursor-pointer transition-all ${
+                  type="button"
+                  aria-pressed={filter === opt.value}
+                  className={`shrink-0 min-h-10 min-w-11 px-2.5 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-lg border-0 cursor-pointer transition-[color,background-color,box-shadow] ${
                     filter === opt.value
                       ? 'bg-white text-text shadow-sm'
                       : 'bg-transparent text-text-secondary hover:text-text'
@@ -292,7 +295,7 @@ export default function Invoices() {
                       <div key={inv.invoice_id} className="bg-white rounded-xl border border-border shadow-sm p-4">
                         <div className="flex items-start justify-between gap-2 mb-3">
                           <div className="min-w-0">
-                            <div className="text-sm font-semibold text-text truncate">{item.name || '—'}</div>
+                            <div className="text-sm font-semibold text-text break-words">{item.name || '—'}</div>
                             {item.sub && <div className="text-[11px] text-text-secondary mt-0.5">{item.sub}</div>}
                             <div className="text-[11px] font-mono text-text-secondary mt-1">{inv.invoice_number || '—'}</div>
                           </div>
@@ -300,15 +303,15 @@ export default function Invoices() {
                             {statusCfg.label}
                           </span>
                         </div>
-                        <div className="flex items-center justify-between pt-3 border-t border-border/60">
+                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-3 border-t border-border/60">
                           <div className="flex items-center gap-3">
                             <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${typeCfg.color}`}>
                               {typeCfg.label}
                             </span>
-                            <span className="text-xs text-text-secondary">{formatDate(inv.created_at)}</span>
+                            <span className="text-xs text-text-secondary whitespace-nowrap">{formatDate(inv.created_at)}</span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-text">{formatPrice(total)}</span>
+                          <div className="flex items-center gap-2 ml-auto">
+                            <span className="text-sm font-semibold text-text whitespace-nowrap tabular-nums">{formatPrice(total)}</span>
                             {inv.payment_status === 'paid' && (
                               <DownloadButton invoiceId={inv.invoice_id} invoiceNumber={inv.invoice_number} />
                             )}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getEbookById } from '../api/ebooks';
 import { useAuth } from '../context/AuthContext';
 import { usePurchase } from '../context/PurchaseContext';
@@ -51,8 +51,10 @@ export default function EbookDetail() {
     navigate(`/checkout/ebooks/${id}`);
   };
 
+  // A page that ends its entrance on a transform would trap the fixed buy bar
+  // inside it, so this one only fades.
   return (
-    <div className="animate-fade-in-up">
+    <div className="animate-fade-in">
       <div className="max-w-5xl 2xl:max-w-6xl mx-auto">
         {/* Header card */}
         <div className="gradient-hero rounded-2xl sm:rounded-3xl p-8 sm:p-10 lg:p-12 text-white mb-6 sm:mb-8 relative overflow-hidden">
@@ -77,19 +79,34 @@ export default function EbookDetail() {
           <div className="lg:col-span-2 space-y-6">
             <div className="flex flex-col sm:flex-row gap-6 lg:gap-8">
               {book.thumbnail_url && (
-                <div className="flex justify-center sm:justify-start shrink-0">
-                  <img
-                    src={book.thumbnail_url}
-                    alt={book.title}
-                    className="h-52 sm:h-60 md:h-72 lg:h-80 rounded-2xl shadow-lg object-cover"
-                  />
+                <div className="flex justify-center sm:justify-start shrink-0 sm:max-w-[45%]">
+                  {/* Fixed 3:4 frame (like the cards), so the cover loading in
+                      does not push the details down. The whole cover shows
+                      (contain, never a crop): a cover of another shape sits
+                      centred on the frame's tint. */}
+                  <div className="h-52 sm:h-60 md:h-72 lg:h-80 aspect-3/4 max-w-full self-start rounded-2xl shadow-lg overflow-hidden bg-surface-dim">
+                    <img
+                      src={book.thumbnail_url}
+                      alt={book.title}
+                      width="240"
+                      height="320"
+                      decoding="async"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
                 </div>
               )}
 
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div className="bg-white rounded-xl shadow-sm border border-border p-6">
                   <h3 className="text-base font-semibold text-text mb-3 pb-2 border-b border-border">About this Book</h3>
                   {book.description && <p className="text-sm text-text-secondary leading-relaxed">{book.description}</p>}
+                  {book.has_sample && (
+                    <Link to={`/ebooks/${id}/sample`} className="mt-4 inline-flex lg:hidden items-center gap-2 min-h-11 text-sm font-semibold text-primary no-underline hover:underline">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
+                      Read free sample{book.sample_pages ? ` (about ${book.sample_pages} ${book.sample_pages === 1 ? 'page' : 'pages'})` : ''}
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
@@ -169,6 +186,11 @@ export default function EbookDetail() {
                   <button onClick={handleBuy} className="btn-primary w-full mt-5 !py-3.5">
                     Buy Now
                   </button>
+                  {book.has_sample && (
+                    <Link to={`/ebooks/${id}/sample`} className="btn-outline w-full mt-3 !py-3 no-underline">
+                      Read free sample
+                    </Link>
+                  )}
                   <p className="text-xs text-text-tertiary mt-3 text-center">Instant digital delivery</p>
                 </>
               )}
@@ -186,7 +208,7 @@ export default function EbookDetail() {
 
       {/* Mobile sticky bottom CTA */}
       {purchased ? (
-        <div className="fixed bottom-0 left-0 right-0 glass-strong border-t border-border p-4 safe-area-inset-bottom lg:hidden z-40">
+        <div data-bottom-bar className="fixed bottom-0 left-0 right-0 glass-strong border-t border-border px-4 pt-4 pb-safe-4 lg:hidden z-40">
           <div className="max-w-7xl mx-auto flex items-center justify-center gap-2">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-success">
               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -196,7 +218,7 @@ export default function EbookDetail() {
           </div>
         </div>
       ) : (
-        <div className="fixed bottom-0 left-0 right-0 glass-strong border-t border-border p-4 safe-area-inset-bottom lg:hidden z-40">
+        <div data-bottom-bar className="fixed bottom-0 left-0 right-0 glass-strong border-t border-border px-4 pt-4 pb-safe-4 lg:hidden z-40">
           <div className="max-w-7xl mx-auto flex items-center gap-4">
             <PriceDisplay
               price={price}
@@ -204,7 +226,12 @@ export default function EbookDetail() {
               isOnSale={book.is_on_sale}
               size="lg"
             />
-            <button onClick={handleBuy} className="btn-primary flex-1 !py-3">
+            {book.has_sample && (
+              <Link to={`/ebooks/${id}/sample`} className="btn-outline shrink-0 !px-4 !py-3 no-underline" aria-label="Read free sample">
+                Sample
+              </Link>
+            )}
+            <button onClick={handleBuy} className="btn-primary flex-1 !py-3 !px-4">
               Buy Now
             </button>
           </div>

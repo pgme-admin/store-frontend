@@ -10,6 +10,7 @@ import PackageList from './pages/PackageList';
 import PackageDetail from './pages/PackageDetail';
 import EbookList from './pages/EbookList';
 import EbookDetail from './pages/EbookDetail';
+import EbookSample from './pages/EbookSample';
 import SessionList from './pages/SessionList';
 import SessionDetail from './pages/SessionDetail';
 import WorkshopList from './pages/WorkshopList';
@@ -34,7 +35,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-surface-dim">
+      <div className="min-h-dvh flex items-center justify-center bg-surface-dim" role="status" aria-label="Loading">
         <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -46,6 +47,7 @@ export default function App() {
         <Route index element={<LandingPage />} />
         <Route path="login" element={<Login />} />
         <Route path="signup" element={<Signup />} />
+        <Route path="ebooks/:id/sample" element={<EbookSample />} />
         <Route path="/" element={<Layout />}>
           <Route path="home" element={<Home />} />
         <Route path="packages" element={<PackageList />} />

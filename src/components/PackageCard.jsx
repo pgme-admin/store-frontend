@@ -1,17 +1,23 @@
 import { formatPrice } from './PriceDisplay';
+import ComboContents from './ComboContents';
+import { getTiers, getPricing, cheapestTierIndex, formatDuration, formatDate } from '../utils/packageTiers';
 
-export default function PackageCard({ pkg, purchased, illustrationIndex = 0, onClick, onUpgrade }) {
-  const hasTiers = pkg.has_tiers && pkg.tiers?.length > 0;
-  const price = hasTiers ? pkg.tiers[0].effective_price || pkg.tiers[0].price : (pkg.sale_price || pkg.price);
-  const originalPrice = hasTiers ? pkg.tiers[0].original_price : pkg.original_price;
-  const isOnSale = hasTiers ? (pkg.tiers[0].original_price > (pkg.tiers[0].effective_price || pkg.tiers[0].price)) : pkg.is_on_sale;
+export default function PackageCard({ pkg, purchased, illustrationIndex = 0, onClick, onUpgrade, onRenew, bundled }) {
+  const tiers = getTiers(pkg);
+  const hasTiers = !!tiers;
+  // "From" must be the cheapest plan, not whichever tier the admin listed first.
+  const { price, originalPrice, isOnSale } = getPricing(pkg, cheapestTierIndex(pkg));
   const hasThumbnail = !!pkg.thumbnail_url;
+  // A multi-plan package's own duration_days is not what anyone buys.
+  const singleDuration = !tiers || tiers.length === 1
+    ? formatDuration(tiers ? tiers[0].duration_days : pkg.duration_days)
+    : '';
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group relative flex flex-col w-full text-left bg-white rounded-2xl border border-border/60 overflow-hidden hover:shadow-lg hover:border-primary/20 transition-all duration-200 cursor-pointer"
+      className="tap-press group relative flex flex-col w-full h-full text-left bg-white rounded-2xl border border-border/60 overflow-hidden hover:shadow-lg hover:border-primary/20 duration-200 cursor-pointer"
     >
       {/* Cover image */}
       <div className="relative bg-surface-dim">
@@ -20,6 +26,10 @@ export default function PackageCard({ pkg, purchased, illustrationIndex = 0, onC
             <img
               src={pkg.thumbnail_url}
               alt={pkg.name}
+              width="640"
+              height="360"
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
             />
           </div>
@@ -54,7 +64,7 @@ export default function PackageCard({ pkg, purchased, illustrationIndex = 0, onC
         )}
 
         {/* Title */}
-        <h3 className="text-sm sm:text-base font-semibold text-text group-hover:text-primary transition-colors line-clamp-2 leading-snug mb-2">
+        <h3 className="text-sm sm:text-base font-semibold text-text group-hover:text-primary transition-colors line-clamp-3 leading-snug mb-2 break-words">
           {pkg.name}
         </h3>
 
@@ -66,18 +76,18 @@ export default function PackageCard({ pkg, purchased, illustrationIndex = 0, onC
         )}
 
         {/* Meta row */}
-        {(pkg.duration_days || pkg.features?.length > 0) && (
+        {(singleDuration || pkg.features?.length > 0) && (
           <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-text-secondary mb-3">
-            {pkg.duration_days && (
+            {singleDuration && (
               <>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-tertiary shrink-0">
                   <circle cx="12" cy="12" r="10"/>
                   <polyline points="12 6 12 12 16 14"/>
                 </svg>
-                <span className="font-medium">{pkg.duration_days} days</span>
+                <span className="font-medium">{singleDuration}</span>
               </>
             )}
-            {pkg.duration_days && pkg.features?.length > 0 && (
+            {singleDuration && pkg.features?.length > 0 && (
               <span className="text-text-tertiary">·</span>
             )}
             {pkg.features?.length > 0 && (
@@ -87,15 +97,30 @@ export default function PackageCard({ pkg, purchased, illustrationIndex = 0, onC
         )}
 
         {/* Tier options */}
-        {hasTiers && pkg.tiers.length > 1 && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-dim mb-3">
-            <div className="min-w-0">
-              <div className="text-[11px] sm:text-xs font-medium text-text">
-                {pkg.tiers.length} duration options
-              </div>
-              <div className="text-[10px] sm:text-[11px] text-text-tertiary truncate">
-                {pkg.tiers.map((t) => t.name).join(' · ')}
-              </div>
+        {/* Combo contents */}
+        {bundled?.length > 0 && <ComboContents items={bundled} variant="compact" />}
+
+        {hasTiers && tiers.length > 1 && (
+          <div className="mb-3">
+            <div className="text-[11px] sm:text-xs font-medium text-text mb-1.5">
+              {tiers.length} plans
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {tiers.map((t, i) => (
+                <span
+                  key={i}
+                  title={t.name}
+                  className={`text-[10px] sm:text-[11px] font-medium px-2 py-1 rounded-md border ${
+                    pkg.current_tier_index === i && purchased
+                      ? 'border-success/30 bg-success/8 text-success'
+                      : 'border-border bg-surface-dim text-text-secondary'
+                  }`}
+                >
+                  {formatDuration(t.duration_days) || t.name}
+                  <span className="text-text-tertiary"> · </span>
+                  {formatPrice(t.effective_price ?? t.price)}
+                </span>
+              ))}
             </div>
           </div>
         )}
@@ -104,21 +129,56 @@ export default function PackageCard({ pkg, purchased, illustrationIndex = 0, onC
         <div className="mt-auto pt-3 border-t border-border/40 flex items-center justify-between gap-2">
           {purchased ? (
             <>
-              <span className="text-xs font-semibold text-success bg-success/8 px-2.5 py-1 rounded-full">Purchased</span>
+              <div className="min-w-0">
+                <span className="text-xs font-semibold text-success bg-success/8 px-2.5 py-1 rounded-full">Purchased</span>
+                {pkg.expires_at && (
+                  <p className="text-[10px] sm:text-[11px] text-text-tertiary mt-1.5">Ends {formatDate(pkg.expires_at)}</p>
+                )}
+              </div>
               {/* Owning a package used to be a dead end here. stopPropagation
                   so this doesn't also open the card's detail modal. */}
-              {onUpgrade && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUpgrade();
-                  }}
-                  className="shrink-0 text-xs sm:text-sm font-semibold text-primary border border-primary px-3 py-1.5 rounded-lg hover:bg-primary/5 transition-colors"
-                >
-                  Upgrade
-                </button>
-              )}
+              <div className="flex items-center gap-1.5 shrink-0">
+                {onUpgrade && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUpgrade();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onUpgrade();
+                      }
+                    }}
+                    className="inline-flex items-center min-h-10 text-xs sm:text-sm font-semibold text-primary border border-primary px-3 py-1.5 rounded-lg hover:bg-primary/5 active:bg-primary/10 transition-colors"
+                  >
+                    Upgrade
+                  </span>
+                )}
+                {onRenew && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRenew();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onRenew();
+                      }
+                    }}
+                    className="inline-flex items-center min-h-10 text-xs sm:text-sm font-semibold text-white bg-primary px-3 py-1.5 rounded-lg hover:bg-primary/90 active:bg-primary/90 transition-colors"
+                  >
+                    Renew
+                  </span>
+                )}
+              </div>
             </>
           ) : (
             <>

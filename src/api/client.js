@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { rememberSignedOut, terminationReason } from './sessionEnd';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -17,6 +18,27 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
+/** Sign out locally and go to the sign-in page, which says why. */
+function endSession(reason) {
+  rememberSignedOut(reason);
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('user');
+  localStorage.removeItem('session_id');
+  window.location.href = '/login';
+}
+
+/**
+ * Only a refusal from the server ends the session. Offline, a timeout or a
+ * server failure (5xx, 429) leaves the student signed in; the next request
+ * tries again.
+ */
+function refreshWasRefused(error) {
+  const status = error?.response?.status;
+  if (!status) return !error?.isAxiosError; // our own errors (no refresh token) are final
+  return status >= 400 && status < 500 && status !== 408 && status !== 429;
+}
+
 // Response interceptor: handle 401 with token refresh
 let isRefreshing = false;
 let failedQueue = [];
@@ -33,6 +55,14 @@ client.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    // This browser's session was ended (admin, another device, the device
+    // limit). Refreshing cannot bring it back.
+    const ended = terminationReason(error);
+    if (ended && originalRequest?.headers?.Authorization) {
+      endSession(ended);
+      return Promise.reject(error);
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
@@ -66,10 +96,9 @@ client.interceptors.response.use(
         return client(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+        if (refreshWasRefused(refreshError)) {
+          endSession(terminationReason(refreshError) || 'expired');
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

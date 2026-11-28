@@ -231,7 +231,7 @@ export default function About() {
             <div className="flex flex-wrap justify-center gap-4">
               <Link
                 to="/packages"
-                className="group inline-flex items-center gap-2.5 px-8 sm:px-10 py-3.5 sm:py-4 text-sm sm:text-base font-semibold text-primary bg-white rounded-full no-underline transition-all duration-300 hover:shadow-[0_4px_24px_rgba(255,255,255,0.3)] hover:scale-105"
+                className="group inline-flex items-center gap-2.5 px-8 sm:px-10 py-3.5 sm:py-4 text-sm sm:text-base font-semibold text-primary bg-white rounded-full no-underline transition-[color,background-color,border-color,box-shadow,transform] duration-300 hover:shadow-[0_4px_24px_rgba(255,255,255,0.3)] hover:scale-105"
               >
                 Browse Packages
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform duration-300 group-hover:translate-x-1">
@@ -241,7 +241,7 @@ export default function About() {
               </Link>
               <Link
                 to="/contact"
-                className="inline-flex items-center gap-2 px-8 sm:px-10 py-3.5 sm:py-4 text-sm sm:text-base font-semibold text-white! border border-white/30 rounded-full no-underline transition-all duration-300 hover:bg-white/10"
+                className="inline-flex items-center gap-2 px-8 sm:px-10 py-3.5 sm:py-4 text-sm sm:text-base font-semibold text-white! border border-white/30 rounded-full no-underline transition-[color,background-color,border-color,box-shadow,transform] duration-300 hover:bg-white/10"
               >
                 Contact Us
               </Link>

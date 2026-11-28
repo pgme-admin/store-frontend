@@ -9,13 +9,14 @@ const OFFICE_POSITION = [31.3636, 75.5609];
 // Custom SVG marker in the primary brand color
 const markerIcon = new L.DivIcon({
   className: '',
-  iconSize: [32, 42],
-  iconAnchor: [16, 42],
-  popupAnchor: [0, -44],
-  html: `<svg width="32" height="42" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+  // 44x48 tap area around the 32x42 pin, so it is easy to hit on a phone.
+  iconSize: [44, 48],
+  iconAnchor: [22, 48],
+  popupAnchor: [0, -50],
+  html: `<div style="width:44px;height:48px;display:flex;align-items:flex-end;justify-content:center"><svg width="32" height="42" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M16 0C7.163 0 0 7.163 0 16c0 10.512 14.112 24.372 14.745 24.98a1.71 1.71 0 0 0 2.51 0C17.888 40.372 32 26.512 32 16 32 7.163 24.837 0 16 0z" fill="#0000C8"/>
     <circle cx="16" cy="16" r="6" fill="white"/>
-  </svg>`,
+  </svg></div>`,
 });
 
 function LocationMap() {
@@ -127,7 +128,7 @@ export default function Contact() {
               </div>
               <h3 className="text-sm font-semibold text-text">Email</h3>
             </div>
-            <a href="mailto:support@pgmemedicalteaching.com" className="text-sm text-primary no-underline hover:underline break-all">
+            <a href="mailto:support@pgmemedicalteaching.com" className="inline-flex items-center min-h-10 -my-2 max-w-full text-sm text-primary no-underline hover:underline break-all">
               support@pgmemedicalteaching.com
             </a>
           </div>
@@ -142,7 +143,7 @@ export default function Contact() {
               </div>
               <h3 className="text-sm font-semibold text-text">Phone</h3>
             </div>
-            <a href="tel:8827741255" className="text-sm text-primary no-underline hover:underline">
+            <a href="tel:8827741255" className="inline-flex items-center min-h-10 -my-2 text-sm text-primary no-underline hover:underline">
               8827741255
             </a>
           </div>
@@ -176,63 +177,72 @@ export default function Contact() {
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-sm font-medium text-text mb-2">Name <span className="text-error">*</span></label>
+                    <label className="block text-sm font-medium text-text mb-2" htmlFor="contact-name">Name <span className="text-error">*</span></label>
                     <input
                       type="text"
+                      id="contact-name"
+                      autoComplete="name"
                       name="name"
                       value={form.name}
                       onChange={handleChange}
                       placeholder="Your full name"
-                      className="w-full px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-text-secondary/50"
+                      className="w-full min-h-11 px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-[border-color,box-shadow] placeholder:text-text-secondary/50"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-text mb-2">Email <span className="text-error">*</span></label>
+                    <label className="block text-sm font-medium text-text mb-2" htmlFor="contact-email">Email <span className="text-error">*</span></label>
                     <input
                       type="email"
+                      id="contact-email"
+                      autoComplete="email"
                       name="email"
                       value={form.email}
                       onChange={handleChange}
                       placeholder="you@example.com"
-                      className="w-full px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-text-secondary/50"
+                      className="w-full min-h-11 px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-[border-color,box-shadow] placeholder:text-text-secondary/50"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-sm font-medium text-text mb-2">Phone</label>
+                    <label className="block text-sm font-medium text-text mb-2" htmlFor="contact-phone">Phone</label>
                     <input
                       type="tel"
+                      id="contact-phone"
+                      autoComplete="tel-national"
+                      inputMode="tel"
                       name="phone"
                       value={form.phone}
                       onChange={handleChange}
                       placeholder="Your phone number"
-                      className="w-full px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-text-secondary/50"
+                      className="w-full min-h-11 px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-[border-color,box-shadow] placeholder:text-text-secondary/50"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-text mb-2">Subject</label>
+                    <label className="block text-sm font-medium text-text mb-2" htmlFor="contact-subject">Subject</label>
                     <input
                       type="text"
+                      id="contact-subject"
                       name="subject"
                       value={form.subject}
                       onChange={handleChange}
                       placeholder="What is this about?"
-                      className="w-full px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-text-secondary/50"
+                      className="w-full min-h-11 px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-[border-color,box-shadow] placeholder:text-text-secondary/50"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-text mb-2">Message <span className="text-error">*</span></label>
+                  <label className="block text-sm font-medium text-text mb-2" htmlFor="contact-message">Message <span className="text-error">*</span></label>
                   <textarea
+                    id="contact-message"
                     name="message"
                     value={form.message}
                     onChange={handleChange}
                     rows={5}
                     placeholder="How can we help you?"
-                    className="w-full px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all resize-y min-h-[120px] placeholder:text-text-secondary/50"
+                    className="w-full px-4 py-2.5 text-sm border border-border rounded-lg bg-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-[border-color,box-shadow] resize-y min-h-[120px] placeholder:text-text-secondary/50"
                   />
                 </div>
 
@@ -284,7 +294,7 @@ export default function Contact() {
             href="https://maps.app.goo.gl/BY4DLXepUboN22h18"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-medium text-primary bg-primary/5 rounded-lg no-underline hover:bg-primary/10 transition-colors shrink-0"
+            className="inline-flex items-center gap-1.5 min-h-10 px-4 py-2 text-xs sm:text-sm font-medium text-primary bg-primary/5 rounded-lg no-underline hover:bg-primary/10 active:bg-primary/10 transition-colors shrink-0"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>

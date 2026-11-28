@@ -8,11 +8,40 @@ import { useAuth } from '../context/AuthContext';
 import { usePurchase } from '../context/PurchaseContext';
 import PackageCard from '../components/PackageCard';
 import PackageModal from '../components/PackageModal';
+import PackageKindTabs from '../components/PackageKindTabs';
+import useComboBundles from '../hooks/useComboBundles';
+import { filterByKind } from '../utils/packageTiers';
 import EbookCard from '../components/EbookCard';
 import EbookModal from '../components/EbookModal';
 import { formatPrice } from '../components/PriceDisplay';
 import { getBanners } from '../api/banners';
 import BannerSlide from '../components/BannerSlide';
+import CardSkeletons from '../components/CardSkeletons';
+
+function BannerDots({ count, active, onSelect }) {
+  return (
+    <div className="flex items-center justify-center gap-0.5 mt-2">
+      {Array.from({ length: count }, (_, i) => (
+        <button
+          key={i}
+          type="button"
+          onClick={() => onSelect(i)}
+          aria-label={`Show banner ${i + 1} of ${count}`}
+          aria-current={active === i ? 'true' : undefined}
+          className="h-8 min-w-8 px-1 inline-flex items-center justify-center cursor-pointer border-0 bg-transparent"
+        >
+          <span
+            className={`block h-1.5 rounded-full transition-[width,background-color] duration-300 ${
+              active === i ? 'w-6 bg-[#0000C8]' : 'w-1.5 bg-gray-300'
+            }`}
+          />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const viewAllLink = 'group inline-flex items-center gap-1.5 min-h-10 -my-2.5 px-2 -mx-2 rounded-lg text-sm font-semibold text-[#0000C8] hover:text-[#0000a0] active:text-[#0000a0] no-underline shrink-0';
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -33,6 +62,7 @@ export default function Home() {
   const [loadingBooks, setLoadingBooks] = useState(true);
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [selectedPackage, setSelectedPackage] = useState(null);
+  const [pkgKind, setPkgKind] = useState('all');
   const [selectedBook, setSelectedBook] = useState(null);
   const [specialtyOpen, setSpecialtyOpen] = useState(false);
   const [activeSessionSlide, setActiveSessionSlide] = useState(0);
@@ -105,6 +135,12 @@ export default function Home() {
   };
 
   const totalPurchased = (purchasedPackageIds?.size || 0) + (purchasedEbookIds?.size || 0) + (purchasedSessionIds?.size || 0);
+
+  // Theory / Practical / Combo filter, and what each combo bundles.
+  const comboBundles = useComboBundles(packages);
+  const homeKindFiltered = filterByKind(packages, pkgKind);
+  const homePackages = homeKindFiltered.length ? homeKindFiltered : packages;
+  const homeKind = homeKindFiltered.length ? pkgKind : 'all';
   const rawName = user?.name || 'Student';
   const displayName = rawName.replace(/\b\w/g, (c) => c.toUpperCase());
 
@@ -171,7 +207,7 @@ export default function Home() {
                 </div>
                 <Link
                   to="/my-purchases"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/10 border border-white/10 text-sm font-medium text-white no-underline hover:bg-white/15 transition-all mt-1"
+                  className="inline-flex items-center gap-2 min-h-11 px-5 py-2.5 rounded-full bg-white/10 border border-white/10 text-sm font-medium text-white no-underline hover:bg-white/15 active:bg-white/20 transition-colors mt-1"
                 >
                   My Purchases
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -249,32 +285,26 @@ export default function Home() {
             <section className="px-5 sm:px-8 lg:px-12 2xl:px-16 mb-10 sm:mb-14">
               <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto">
                 <div className="relative rounded-3xl overflow-hidden">
-                  <div className="relative" style={{ aspectRatio: '21/9' }}>
+                  {/* Banners are cropped to 16:9 in the admin: shown whole on phones and
+                    tablets; the wide desktop slot stays 21:9. */}
+                <div className="relative aspect-video lg:aspect-[21/9]">
                     {banners.map((b, i) => (
                       <div
                         key={b._id || i}
                         className="absolute inset-0 transition-opacity duration-500"
+                        aria-hidden={activeBannerSlide !== i}
                         style={{ opacity: activeBannerSlide === i ? 1 : 0, pointerEvents: activeBannerSlide === i ? 'auto' : 'none' }}
                       >
                         <BannerSlide banner={b} />
                       </div>
                     ))}
                   </div>
-                  {/* Dots */}
-                  {banners.length > 1 && (
-                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
-                      {banners.map((_, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setActiveBannerSlide(i)}
-                          className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer border-0 ${
-                            activeBannerSlide === i ? 'w-6 bg-white' : 'w-1.5 bg-white/40'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  )}
                 </div>
+                {/* Dots sit under the banner, not on it, so a tap meant for a
+                    dot never opens the banner. */}
+                {banners.length > 1 && (
+                  <BannerDots count={banners.length} active={activeBannerSlide} onSelect={setActiveBannerSlide} />
+                )}
               </div>
             </section>
           )}
@@ -326,7 +356,7 @@ export default function Home() {
                 </div>
                 <Link
                   to="/login"
-                  className="shrink-0 inline-flex items-center gap-2 px-7 py-3 text-sm font-semibold text-[#0000C8] bg-white rounded-full no-underline transition-all duration-300 hover:shadow-[0_4px_24px_rgba(255,255,255,0.2)] hover:scale-105"
+                  className="shrink-0 inline-flex items-center gap-2 min-h-11 px-7 py-3 text-sm font-semibold text-[#0000C8] bg-white rounded-full no-underline transition-[box-shadow,transform] duration-300 hover:shadow-[0_4px_24px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-[0.97]"
                 >
                   Get Started
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -344,31 +374,22 @@ export default function Home() {
         <section className="px-5 sm:px-8 lg:px-12 2xl:px-16 mb-6 sm:mb-8">
           <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto">
             <div className="relative rounded-3xl overflow-hidden">
-              <div className="relative" style={{ aspectRatio: '21/9' }}>
+              <div className="relative aspect-video lg:aspect-[21/9]">
                 {banners.map((b, i) => (
                   <div
                     key={b._id || i}
                     className="absolute inset-0 transition-opacity duration-500"
+                    aria-hidden={activeBannerSlide !== i}
                     style={{ opacity: activeBannerSlide === i ? 1 : 0, pointerEvents: activeBannerSlide === i ? 'auto' : 'none' }}
                   >
                     <BannerSlide banner={b} />
                   </div>
                 ))}
               </div>
-              {banners.length > 1 && (
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
-                  {banners.map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setActiveBannerSlide(i)}
-                      className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer border-0 ${
-                        activeBannerSlide === i ? 'w-6 bg-white' : 'w-1.5 bg-white/40'
-                      }`}
-                    />
-                  ))}
-                </div>
-              )}
             </div>
+            {banners.length > 1 && (
+              <BannerDots count={banners.length} active={activeBannerSlide} onSelect={setActiveBannerSlide} />
+            )}
           </div>
         </section>
       )}
@@ -387,7 +408,8 @@ export default function Home() {
           <button
             type="button"
             onClick={() => setSpecialtyOpen(!specialtyOpen)}
-            className="w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-4 bg-white rounded-2xl border border-gray-200 hover:border-[#0000C8]/30 transition-all duration-200 cursor-pointer text-left shadow-[0_2px_12px_rgba(0,0,0,0.03)]"
+            aria-expanded={specialtyOpen}
+            className="tap-press w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-4 bg-white rounded-2xl border border-gray-200 hover:border-[#0000C8]/30 duration-200 cursor-pointer text-left shadow-[0_2px_12px_rgba(0,0,0,0.03)]"
           >
             <div className="flex items-center gap-3.5 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-[#0000C8] flex items-center justify-center shrink-0">
@@ -414,7 +436,7 @@ export default function Home() {
                       key={id}
                       type="button"
                       onClick={() => { selectSubject(subject); setSpecialtyOpen(false); }}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-150 cursor-pointer border ${
+                      className={`flex items-center gap-3 min-h-12 px-4 py-3 rounded-xl text-left transition-colors duration-150 cursor-pointer border ${
                         isActive
                           ? 'bg-[#0000C8]/5 border-[#0000C8]/20 text-[#0000C8]'
                           : 'bg-transparent border-transparent hover:bg-gray-50 text-gray-500 hover:text-gray-900'
@@ -441,12 +463,12 @@ export default function Home() {
 
         {/* ── Packages ── */}
         <section className="mb-14 sm:mb-18">
-          <div className="flex items-end justify-between mb-6 sm:mb-8">
-            <div>
+          <div className="flex items-end justify-between gap-4 mb-6 sm:mb-8">
+            <div className="min-w-0">
               <h2 className="font-display text-xl sm:text-2xl 2xl:text-3xl font-extrabold text-gray-900 tracking-tight">Course Packages</h2>
               <p className="text-xs sm:text-sm text-gray-400 mt-1">Top picks for {selectedSubject?.name || 'you'}</p>
             </div>
-            <Link to="/packages" className="group text-sm font-semibold text-[#0000C8] hover:text-[#0000a0] no-underline flex items-center gap-1.5">
+            <Link to="/packages" className={viewAllLink}>
               View All
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover:translate-x-0.5">
                 <polyline points="9 18 15 12 9 6" />
@@ -455,9 +477,14 @@ export default function Home() {
           </div>
 
           {loadingPkgs ? (
-            <div className="flex justify-center py-16">
-              <div className="w-8 h-8 border-3 border-[#0000C8]/30 border-t-[#0000C8] rounded-full animate-spin" />
-            </div>
+            <>
+              <div className="flex gap-2 mb-5" aria-hidden="true">
+                <div className="skeleton h-10 w-16 rounded-full" />
+                <div className="skeleton h-10 w-24 rounded-full" />
+                <div className="skeleton h-10 w-24 rounded-full" />
+              </div>
+              <CardSkeletons count={3} cover="aspect-video" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-5 2xl:gap-6" />
+            </>
           ) : packages.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-3xl border border-gray-200">
               <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -466,28 +493,32 @@ export default function Home() {
               <p className="text-sm text-gray-400">No packages for {selectedSubject?.name}</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-5 2xl:gap-6">
-              {packages.slice(0, 6).map((pkg, index) => (
-                <PackageCard
-                  key={pkg.package_id}
-                  pkg={pkg}
-                  purchased={pkg.is_purchased || isPackagePurchased(pkg.package_id)}
-                  illustrationIndex={index}
-                  onClick={() => setSelectedPackage(pkg)}
-                />
-              ))}
-            </div>
+            <>
+              <PackageKindTabs packages={packages} value={homeKind} onChange={setPkgKind} className="mb-5" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-5 2xl:gap-6">
+                {homePackages.slice(0, 6).map((pkg, index) => (
+                  <PackageCard
+                    key={pkg.package_id}
+                    pkg={pkg}
+                    purchased={pkg.is_purchased || isPackagePurchased(pkg.package_id)}
+                    illustrationIndex={index}
+                    bundled={comboBundles[String(pkg.package_id)]}
+                    onClick={() => setSelectedPackage(pkg)}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </section>
 
         {/* ── eBooks ── */}
         <section className="mb-14 sm:mb-18">
-          <div className="flex items-end justify-between mb-6 sm:mb-8">
-            <div>
+          <div className="flex items-end justify-between gap-4 mb-6 sm:mb-8">
+            <div className="min-w-0">
               <h2 className="font-display text-xl sm:text-2xl 2xl:text-3xl font-extrabold text-gray-900 tracking-tight">eBooks</h2>
               <p className="text-xs sm:text-sm text-gray-400 mt-1">Digital study materials</p>
             </div>
-            <Link to="/ebooks" className="group text-sm font-semibold text-[#0000C8] hover:text-[#0000a0] no-underline flex items-center gap-1.5">
+            <Link to="/ebooks" className={viewAllLink}>
               View All
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover:translate-x-0.5">
                 <polyline points="9 18 15 12 9 6" />
@@ -496,9 +527,7 @@ export default function Home() {
           </div>
 
           {loadingBooks ? (
-            <div className="flex justify-center py-16">
-              <div className="w-8 h-8 border-3 border-[#0000C8]/30 border-t-[#0000C8] rounded-full animate-spin" />
-            </div>
+            <CardSkeletons count={4} cover="aspect-3/4" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 sm:gap-5 2xl:gap-6" />
           ) : ebooks.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-3xl border border-gray-200">
               <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -523,12 +552,12 @@ export default function Home() {
 
         {/* ── Live Sessions Grid ── */}
         <section className="mb-14 sm:mb-18">
-          <div className="flex items-end justify-between mb-6 sm:mb-8">
-            <div>
+          <div className="flex items-end justify-between gap-4 mb-6 sm:mb-8">
+            <div className="min-w-0">
               <h2 className="font-display text-xl sm:text-2xl 2xl:text-3xl font-extrabold text-gray-900 tracking-tight">Live Sessions</h2>
               <p className="text-xs sm:text-sm text-gray-400 mt-1">Interactive classes & webinars</p>
             </div>
-            <Link to="/sessions" className="group text-sm font-semibold text-[#0000C8] hover:text-[#0000a0] no-underline flex items-center gap-1.5">
+            <Link to="/sessions" className={viewAllLink}>
               View All
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover:translate-x-0.5">
                 <polyline points="9 18 15 12 9 6" />
@@ -537,9 +566,7 @@ export default function Home() {
           </div>
 
           {loadingSessions ? (
-            <div className="flex justify-center py-16">
-              <div className="w-8 h-8 border-3 border-[#0000C8]/30 border-t-[#0000C8] rounded-full animate-spin" />
-            </div>
+            <CardSkeletons count={3} cover="aspect-video" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-5 2xl:gap-6" />
           ) : sessions.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-3xl border border-gray-200">
               <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -556,11 +583,11 @@ export default function Home() {
                   <Link
                     key={session.session_id}
                     to={`/sessions/${session.session_id}`}
-                    className="group block bg-white rounded-3xl border border-gray-200 overflow-hidden hover:shadow-lg hover:border-[#0000C8]/20 transition-all duration-200 no-underline"
+                    className="tap-press group block bg-white rounded-3xl border border-gray-200 overflow-hidden hover:shadow-lg hover:border-[#0000C8]/20 duration-200 no-underline"
                   >
                     {session.thumbnail_url ? (
                       <div className="aspect-video bg-gray-50 overflow-hidden relative">
-                        <img src={session.thumbnail_url} alt={session.title} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" />
+                        <img src={session.thumbnail_url} alt={session.title} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" />
                         {purchased && <span className="absolute top-2.5 right-2.5 text-[10px] sm:text-xs font-semibold bg-emerald-500 text-white px-2.5 py-0.5 rounded-full">Purchased</span>}
                       </div>
                     ) : (
@@ -634,7 +661,7 @@ export default function Home() {
               <div className="flex flex-wrap justify-center gap-3">
                 <Link
                   to="/packages"
-                  className="group inline-flex items-center gap-2.5 px-8 sm:px-10 py-3.5 text-sm font-semibold text-[#0a0a2e] bg-white rounded-full no-underline transition-all duration-300 hover:shadow-[0_4px_24px_rgba(255,255,255,0.2)] hover:scale-105"
+                  className="group inline-flex items-center justify-center gap-2.5 min-h-12 px-8 sm:px-10 py-3.5 text-sm font-semibold text-[#0a0a2e] bg-white rounded-full no-underline transition-[box-shadow,transform] duration-300 hover:shadow-[0_4px_24px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-[0.97]"
                 >
                   Browse Packages
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover:translate-x-0.5">
@@ -643,7 +670,7 @@ export default function Home() {
                 </Link>
                 <Link
                   to="/contact"
-                  className="inline-flex items-center gap-2 px-8 sm:px-10 py-3.5 text-sm font-semibold text-white border border-white/20 rounded-full no-underline transition-all duration-300 hover:bg-white/10 hover:border-white/40"
+                  className="inline-flex items-center justify-center gap-2 min-h-12 px-8 sm:px-10 py-3.5 text-sm font-semibold text-white border border-white/20 rounded-full no-underline transition-colors duration-300 hover:bg-white/10 hover:border-white/40 active:bg-white/10"
                 >
                   Contact Us
                 </Link>
@@ -662,11 +689,11 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="flex gap-4 sm:gap-5 overflow-x-auto pb-4 -mx-1 px-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div className="flex gap-4 sm:gap-5 overflow-x-auto overscroll-x-contain snap-x snap-mandatory pb-4 -mx-1 px-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {faculty.map((f) => (
                 <div
                   key={f.name}
-                  className="shrink-0 w-[200px] sm:w-[220px] 2xl:w-[260px] bg-white rounded-3xl border border-gray-200 p-5 sm:p-6 2xl:p-7 text-center hover:shadow-lg hover:border-[#0000C8]/20 transition-all duration-300"
+                  className="snap-start shrink-0 w-[200px] sm:w-[220px] 2xl:w-[260px] bg-white rounded-3xl border border-gray-200 p-5 sm:p-6 2xl:p-7 text-center hover:shadow-lg hover:border-[#0000C8]/20 transition-[box-shadow,border-color] duration-300"
                 >
                   {f.photo ? (
                     <img

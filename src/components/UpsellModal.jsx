@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { formatPrice } from './PriceDisplay';
 import { getComboOffer, calculateComboUpgrade } from '../api/packages';
+import { formatAccess, formatDuration, packageCheckoutPath } from '../utils/packageTiers';
 import { useAuth } from '../context/AuthContext';
 
 /**
@@ -42,6 +43,10 @@ export default function UpsellModal({
   // owns. Without it, a combo's own page offers nothing — and on mobile that
   // page has no other upgrade path, since the credited panel is desktop-only.
   isCombo = false,
+  // The plan chosen on the page behind this modal, so the buyer sees what
+  // they are about to pay for ("6 months plan"), and what a combo bundles.
+  planName = null,
+  bundledItems = [],
 }) {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -95,13 +100,15 @@ export default function UpsellModal({
     onClose();
     // Same shape Checkout already consumes for a combo upgrade, so the credit
     // rows and the combo create-order path work with no changes there.
-    navigate(`/checkout/packages/${comboOffer.combo.package_id}`, {
-      state: {
-        upgradeMode: 'combo',
-        upgradeQuote: comboOffer,
+    // Tier and mode live in the URL so a reload keeps the same price; the
+    // quote rides along in state only to skip one re-fetch.
+    navigate(
+      packageCheckoutPath(comboOffer.combo.package_id, {
         tierIndex: comboOffer.combo.tier_index ?? 0,
-      },
-    });
+        mode: 'combo',
+      }),
+      { state: { upgradeQuote: comboOffer } }
+    );
   };
 
   const handleBrowse = () => {
@@ -141,7 +148,8 @@ export default function UpsellModal({
         >
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm flex items-center justify-center transition-colors cursor-pointer border-0"
+            type="button"
+              className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 z-10 w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 active:bg-white/30 backdrop-blur-sm flex items-center justify-center transition-colors cursor-pointer border-0"
             aria-label="Close"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
@@ -206,7 +214,7 @@ export default function UpsellModal({
 
                 <p className="text-[11px] text-text-tertiary mt-2 text-center">
                   Credit is the unused value of what you own. Your current access is replaced
-                  by the combo{comboOffer.granted_days ? `, valid ${comboOffer.granted_days} more days` : ''}.
+                  by the combo{comboOffer.granted_days ? `, valid for ${formatDuration(comboOffer.granted_days)}` : ''}.
                 </p>
               </div>
             )}
@@ -219,7 +227,18 @@ export default function UpsellModal({
 
             <div className="rounded-xl border border-border p-4 sm:p-5">
               {productName && (
-                <h3 className="text-sm sm:text-base font-semibold text-text mb-3">{productName}</h3>
+                <h3 className="text-sm sm:text-base font-semibold text-text mb-1">{productName}</h3>
+              )}
+              {(durationDays || planName) && (
+                <p className="text-xs sm:text-sm text-text-secondary mb-3">
+                  {formatDuration(durationDays) ? `${formatDuration(durationDays)} plan` : planName}
+                  {planName && formatDuration(durationDays) ? ` · ${planName}` : ''}
+                </p>
+              )}
+              {bundledItems.length > 0 && (
+                <p className="text-xs text-text-secondary mb-3">
+                  Includes {bundledItems.map((b) => b.package_type || b.name).join(' + ')}
+                </p>
               )}
 
               {shownFeatures.length > 0 && (
@@ -242,7 +261,7 @@ export default function UpsellModal({
                   <span className="text-xl sm:text-2xl font-bold text-text">{formatPrice(price)}</span>
                   {durationDays && (
                     <span className="text-xs sm:text-sm text-text-tertiary">
-                      / {durationDays} days access
+                      / {formatAccess(durationDays)}
                     </span>
                   )}
                 </div>

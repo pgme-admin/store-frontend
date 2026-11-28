@@ -30,18 +30,76 @@
 }
 
 /* ─── Base ─── */
+/* Inter arrives from Google Fonts with display=swap. Until it does, text is set
+   in Arial stretched to Inter's metrics, so the swap does not reflow the page. */
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans');
+  ascent-override: 90.44%;
+  descent-override: 22.52%;
+  line-gap-override: 0%;
+  size-adjust: 107.12%;
+}
+
 html {
-  scroll-behavior: smooth;
+  /* The page never jumps sideways when the scrollbar appears, or when a modal
+     locks scrolling. */
+  scrollbar-gutter: stable;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-family: 'Inter', 'Inter Fallback', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
   background-color: var(--color-surface-dim);
   color: var(--color-text);
   overflow-x: hidden;
+  overscroll-behavior-x: none;
+  /* viewport-fit=cover: keep content clear of the notch in landscape. */
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Taps act at once (no double-tap zoom delay) and without the grey flash. */
+a, button, [role="button"], [role="tab"], [role="radio"], [role="checkbox"], label, summary, select,
+input, textarea {
+  touch-action: manipulation;
+}
+
+/* iOS zooms into any field under 16px when it is focused. */
+@media (pointer: coarse), (hover: none) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Long words, links and ids wrap instead of pushing the page sideways. */
+h1, h2, h3, h4, p, li, dd, dt, td, th, label, blockquote {
+  overflow-wrap: break-word;
+}
+
+/* Fixed bars and sheets sit above the iPhone home indicator. */
+.pb-safe-4 {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* A page with a fixed bottom buy bar (phones and tablets): the footer ends
+   above the bar instead of behind it. Bars carry data-bottom-bar. */
+@media (max-width: 1023.98px) {
+  body:has([data-bottom-bar], .fixed.bottom-0.glass-strong) footer {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+    background-color: #fff;
+  }
 }
 
 /* ─── Large Monitor Scaling (24–27″+) ─── */
@@ -60,9 +118,11 @@ body {
 }
 
 /* ─── Animations ─── */
+/* Ends on `none`: a transform, even translateY(0), traps position: fixed
+   children, so the phone buy bar scrolled away with the page. */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+  to { opacity: 1; transform: none; }
 }
 
 @keyframes fadeIn {
@@ -106,31 +166,35 @@ body {
 }
 
 .animate-fade-in-up {
-  animation: fadeInUp 0.45s ease-out both;
+  animation: fadeInUp 0.45s ease-out backwards;
 }
 
 .animate-fade-in-up-delay-1 {
-  animation: fadeInUp 0.45s ease-out 0.06s both;
+  animation: fadeInUp 0.45s ease-out 0.06s backwards;
 }
 
 .animate-fade-in-up-delay-2 {
-  animation: fadeInUp 0.45s ease-out 0.12s both;
+  animation: fadeInUp 0.45s ease-out 0.12s backwards;
 }
 
 .animate-fade-in-up-delay-3 {
-  animation: fadeInUp 0.45s ease-out 0.18s both;
+  animation: fadeInUp 0.45s ease-out 0.18s backwards;
 }
 
+/* Every entrance fills `backwards`, never `both`: an animation that stays in
+   effect on opacity or transform makes its element a stacking context and a
+   containing block, which traps position: fixed children (the phone buy bar
+   ended up under the footer). */
 .animate-fade-in {
-  animation: fadeIn 0.35s ease-out both;
+  animation: fadeIn 0.35s ease-out backwards;
 }
 
 .animate-scale-in {
-  animation: scaleIn 0.3s ease-out both;
+  animation: scaleIn 0.3s ease-out backwards;
 }
 
 .animate-slide-down {
-  animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
 .animate-float {
@@ -165,21 +229,52 @@ body {
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
-.skeleton {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 800px 100%;
-  animation: shimmer 1.5s ease-in-out infinite;
-  border-radius: 8px;
+/* Shimmer moves a highlight with transform only (no repaint per frame). */
+@keyframes skeletonSweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+/* In the components layer so utilities on a skeleton (rounded-full, a size)
+   win over these defaults. */
+@layer components {
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: #ececee;
+    border-radius: 8px;
+  }
+
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+    transform: translateX(-100%);
+    animation: skeletonSweep 1.5s ease-in-out infinite;
+  }
 }
 
 .animate-modal-backdrop {
-  animation: modalBackdropIn 0.2s ease-in-out both;
-  will-change: opacity;
+  animation: modalBackdropIn 0.2s ease-in-out backwards;
 }
 
 .animate-modal-content {
-  animation: modalSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
-  will-change: transform, opacity;
+  animation: modalSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+/* Reduced motion: entrances and decorative loops stop; spinners keep turning
+   because they say "working". */
+@media (prefers-reduced-motion: reduce) {
+  *:not(.animate-spin),
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ─── Gradient Utilities ─── */
@@ -240,8 +335,11 @@ body {
 }
 
 /* ─── Scroll & Selection ─── */
+/* Only ever used with p-4 on fixed bottom bars. As an unlayered rule it used
+   to replace p-4's bottom padding, leaving 0px under the buttons on phones
+   without a home indicator; it now keeps the 1rem and adds the inset. */
 .safe-area-inset-bottom {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
 }
 
 ::selection {
@@ -262,8 +360,14 @@ body {
   border-radius: 3px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-secondary);
+/* ─── Interaction states ─── */
+/* Hover styles only where a real pointer can hover; on touch screens a tap
+   would otherwise leave the hover look stuck on. Pressed states give touch
+   feedback instead. */
+@media (hover: hover) {
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-secondary);
+  }
 }
 
 /* ─── Card hover lift ─── */
@@ -271,80 +375,147 @@ body {
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
 }
 
-.card-hover:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 16px 48px -12px rgba(0, 0, 200, 0.1), 0 4px 16px -4px rgba(0, 0, 0, 0.06);
+@media (hover: hover) {
+  .card-hover:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 48px -12px rgba(0, 0, 200, 0.1), 0 4px 16px -4px rgba(0, 0, 0, 0.06);
+  }
 }
 
-/* ─── Button styles — professional rounded, white text ─── */
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 2rem;
-  font-weight: 600;
-  font-size: 0.9375rem;
-  color: white;
-  background: linear-gradient(135deg, #0000C8 0%, #1a1aE0 100%);
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 2px 12px rgba(0, 0, 200, 0.25);
-  letter-spacing: 0.01em;
+/* Buttons and pressable cards live in the components layer, so a size or
+   spacing utility written next to them (text-xs, px-4) wins, as intended.
+   Unlayered, they silently overrode those utilities. */
+@layer components {
+  /* ─── Button styles — professional rounded, white text ─── */
+  .btn-primary,
+  .btn-secondary,
+  .btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    border-radius: 12px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+  }
+
+  .btn-primary {
+    color: white;
+    background: linear-gradient(135deg, #0000C8 0%, #1a1aE0 100%);
+    border: none;
+    box-shadow: 0 2px 12px rgba(0, 0, 200, 0.25);
+    letter-spacing: 0.01em;
+  }
+
+  .btn-secondary {
+    color: #0000C8;
+    background: #E8ECFF;
+    border: 1.5px solid transparent;
+  }
+
+  .btn-outline {
+    color: #0000C8;
+    background: transparent;
+    border: 1.5px solid #0000C8;
+  }
+
+  @media (hover: hover) {
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #0000A0 0%, #0000C8 100%);
+      box-shadow: 0 6px 24px rgba(0, 0, 200, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary:hover {
+      background: #D6DCFF;
+      border-color: #0000C8;
+    }
+
+    .btn-outline:hover {
+      background: rgba(0, 0, 200, 0.04);
+    }
+  }
+
+  .btn-primary:active,
+  .btn-secondary:active,
+  .btn-outline:active {
+    transform: scale(0.98);
+  }
+
+  .btn-primary:active {
+    box-shadow: 0 1px 6px rgba(0, 0, 200, 0.25);
+  }
+
+  .btn-outline:active {
+    background: rgba(0, 0, 200, 0.08);
+  }
+
+  .btn-primary:focus-visible,
+  .btn-secondary:focus-visible,
+  .btn-outline:focus-visible {
+    outline: 2px solid #0000C8;
+    outline-offset: 2px;
+  }
+
+  .btn-primary:disabled,
+  .btn-secondary:disabled,
+  .btn-outline:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* Pressed feedback for the store's own tappable cards and chips (they carry
+     this class), so a tap is felt before the next page or sheet opens. */
+  .tap-press {
+    transition-property: transform, box-shadow, border-color, background-color, color, opacity;
+  }
+  .tap-press:active {
+    transform: scale(0.985);
+  }
 }
 
-.btn-primary:hover {
-  background: linear-gradient(135deg, #0000A0 0%, #0000C8 100%);
-  box-shadow: 0 6px 24px rgba(0, 0, 200, 0.35);
-  transform: translateY(-1px);
+/* ─── Free sample reader ─── */
+.sample-reading {
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  color: var(--color-text);
+  overflow-wrap: break-word;
 }
+.sample-reading > :first-child { margin-top: 0; }
+.sample-reading :is(h2, h3, h4, h5, h6) { font-weight: 700; line-height: 1.3; margin: 1.75em 0 0.6em; text-wrap: balance; }
+.sample-reading h2 { font-size: 1.5rem; }
+.sample-reading h3 { font-size: 1.25rem; }
+.sample-reading :is(h4, h5, h6) { font-size: 1.0625rem; }
+.sample-reading :is(p, ul, ol, dl, blockquote, figure, pre) { margin: 0 0 1.1em; }
+.sample-reading :is(ul, ol) { padding-inline-start: 1.4em; }
+.sample-reading ul { list-style: disc; }
+.sample-reading ol { list-style: decimal; }
+.sample-reading li { margin-bottom: 0.35em; }
+.sample-reading dt { font-weight: 600; }
+.sample-reading dd { margin-inline-start: 1.2em; }
+.sample-reading blockquote { padding-inline-start: 1em; border-inline-start: 3px solid var(--color-border); color: var(--color-text-secondary); }
+.sample-reading pre { overflow-x: auto; white-space: pre-wrap; font-size: 0.9em; }
+.sample-reading hr { border: 0; border-top: 1px solid var(--color-border); margin: 2em 0; }
+.sample-reading img { display: block; max-width: 100%; height: auto; margin: 0 auto 0.75em; border-radius: 8px; }
+.sample-reading figcaption { font-size: 0.875rem; color: var(--color-text-secondary); text-align: center; }
+.sample-reading .sample-table { overflow-x: auto; margin: 0 0 1.25em; }
+.sample-reading table { border-collapse: collapse; width: 100%; font-size: 0.9375rem; line-height: 1.5; }
+.sample-reading :is(td, th) { border: 1px solid var(--color-border); padding: 0.5em 0.75em; text-align: start; vertical-align: top; }
+.sample-reading th { background: var(--color-surface-dim); font-weight: 600; }
+.sample-reading caption { font-size: 0.875rem; color: var(--color-text-secondary); padding-bottom: 0.5em; text-align: start; }
 
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-.btn-secondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 2rem;
-  font-weight: 600;
-  font-size: 0.9375rem;
-  color: #0000C8;
-  background: #E8ECFF;
-  border: 1.5px solid transparent;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.25s ease;
-}
-
-.btn-secondary:hover {
-  background: #D6DCFF;
-  border-color: #0000C8;
-}
-
-.btn-outline {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 2rem;
-  font-weight: 600;
-  font-size: 0.9375rem;
-  color: #0000C8;
-  background: transparent;
-  border: 1.5px solid #0000C8;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.25s ease;
-}
-
-.btn-outline:hover {
-  background: rgba(0, 0, 200, 0.04);
+/* ─── Map (Contact) ─── */
+/* Leaflet's zoom buttons are 30px; 40px is a comfortable thumb target. */
+.leaflet-touch .leaflet-bar a {
+  width: 40px;
+  height: 40px;
+  line-height: 40px;
 }

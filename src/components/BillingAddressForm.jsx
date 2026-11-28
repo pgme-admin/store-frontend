@@ -70,7 +70,9 @@ export default function BillingAddressForm({ onSubmit, loading, termsAccepted, o
   useEffect(() => {
     (async () => {
       try {
-        const profile = await getUserProfile();
+        // GET /users/profile answers { user }; the saved address lives on the user.
+        const res = await getUserProfile();
+        const profile = res?.user ?? res;
         if (profile?.billing_address) {
           const saved = profile.billing_address;
           savedPincodeRef.current = saved.pincode || '';
@@ -151,15 +153,34 @@ export default function BillingAddressForm({ onSubmit, loading, termsAccepted, o
   const isValid = address.street && address.city && address.state && address.state_code && address.pincode;
 
   if (loadingProfile) {
+    // Same shape as the form below, so the order summary under it (on phones)
+    // does not jump when the saved address arrives.
+    const field = (w) => (
+      <div>
+        <div className={`skeleton h-3.5 ${w} mb-2`} />
+        <div className="skeleton h-11 sm:h-12 w-full rounded-lg" />
+      </div>
+    );
     return (
-      <div className="flex items-center justify-center py-8 gap-3">
-        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        <span className="text-sm text-text-secondary">Loading address...</span>
+      <div className="space-y-4 sm:space-y-5" role="status" aria-live="polite">
+        <span className="sr-only">Loading address...</span>
+        <div className="skeleton h-5 sm:h-6 w-36 mb-1 sm:mb-2" />
+        <div className="space-y-3 sm:space-y-4">
+          {field('w-28')}
+          {field('w-28')}
+          {field('w-20')}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            {field('w-12')}
+            {field('w-14')}
+          </div>
+        </div>
+        <div className="skeleton h-24 sm:h-16 w-full rounded-lg" />
+        <div className="skeleton h-12 sm:h-14 w-full rounded-xl mt-3 sm:mt-4" />
       </div>
     );
   }
 
-  const inputClass = "w-full px-3.5 sm:px-4 py-2.5 sm:py-3 border border-border rounded-lg text-sm sm:text-base bg-surface text-text placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all";
+  const inputClass = "w-full min-h-11 px-3.5 sm:px-4 py-2.5 sm:py-3 border border-border rounded-lg text-sm sm:text-base bg-surface text-text placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-[border-color,box-shadow]";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
@@ -167,9 +188,11 @@ export default function BillingAddressForm({ onSubmit, loading, termsAccepted, o
 
       <div className="space-y-3 sm:space-y-4">
         <div>
-          <label className="block text-xs sm:text-sm font-semibold text-text mb-1.5 sm:mb-2">Address Line 1 *</label>
+          <label className="block text-xs sm:text-sm font-semibold text-text mb-1.5 sm:mb-2" htmlFor="billing-street">Address Line 1 *</label>
           <input
+            id="billing-street"
             name="street"
+            autoComplete="address-line1"
             value={address.street}
             onChange={handleChange}
             placeholder="Street address"
@@ -179,9 +202,11 @@ export default function BillingAddressForm({ onSubmit, loading, termsAccepted, o
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-semibold text-text mb-1.5 sm:mb-2">Address Line 2</label>
+          <label className="block text-xs sm:text-sm font-semibold text-text mb-1.5 sm:mb-2" htmlFor="billing-street2">Address Line 2</label>
           <input
+            id="billing-street2"
             name="street2"
+            autoComplete="address-line2"
             value={address.street2}
             onChange={handleChange}
             placeholder="Apartment, suite, etc. (optional)"
@@ -191,10 +216,12 @@ export default function BillingAddressForm({ onSubmit, loading, termsAccepted, o
 
         {/* Pincode first — auto-fills city & state below */}
         <div>
-          <label className="block text-xs sm:text-sm font-semibold text-text mb-1.5 sm:mb-2">Pincode *</label>
+          <label className="block text-xs sm:text-sm font-semibold text-text mb-1.5 sm:mb-2" htmlFor="billing-pincode">Pincode *</label>
           <div className="relative">
             <input
+              id="billing-pincode"
               name="pincode"
+              autoComplete="postal-code"
               value={address.pincode}
               onChange={handleChange}
               placeholder="6-digit pincode"
@@ -222,9 +249,11 @@ export default function BillingAddressForm({ onSubmit, loading, termsAccepted, o
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <div>
-            <label className="block text-xs sm:text-sm font-semibold text-text mb-1.5 sm:mb-2">City *</label>
+            <label className="block text-xs sm:text-sm font-semibold text-text mb-1.5 sm:mb-2" htmlFor="billing-city">City *</label>
             <input
+              id="billing-city"
               name="city"
+              autoComplete="address-level2"
               value={address.city}
               onChange={handleChange}
               placeholder="City"
@@ -233,9 +262,11 @@ export default function BillingAddressForm({ onSubmit, loading, termsAccepted, o
             />
           </div>
           <div>
-            <label className="block text-xs sm:text-sm font-semibold text-text mb-1.5 sm:mb-2">State *</label>
+            <label className="block text-xs sm:text-sm font-semibold text-text mb-1.5 sm:mb-2" htmlFor="billing-state">State *</label>
             <select
+              id="billing-state"
               name="state"
+              autoComplete="address-level1"
               value={address.state}
               onChange={handleChange}
               required
@@ -261,7 +292,7 @@ export default function BillingAddressForm({ onSubmit, loading, termsAccepted, o
               </svg>
               You've agreed to the Terms &amp; Conditions
             </span>
-            <button type="button" onClick={onOpenTerms} className="text-xs text-text-tertiary hover:text-primary underline shrink-0">
+            <button type="button" onClick={onOpenTerms} className="inline-flex items-center min-h-10 -my-2 px-2 -mr-2 text-xs text-text-tertiary hover:text-primary underline shrink-0">
               View
             </button>
           </div>
@@ -273,7 +304,7 @@ export default function BillingAddressForm({ onSubmit, loading, termsAccepted, o
             <button
               type="button"
               onClick={onOpenTerms}
-              className="w-full sm:w-auto text-xs sm:text-sm font-semibold text-primary border border-primary rounded-lg px-3.5 py-2 sm:py-1.5 hover:bg-primary/5 transition-colors shrink-0"
+              className="w-full sm:w-auto min-h-11 text-xs sm:text-sm font-semibold text-primary border border-primary rounded-lg px-4 py-2 hover:bg-primary/5 active:bg-primary/10 transition-colors shrink-0"
             >
               Read &amp; Agree
             </button>

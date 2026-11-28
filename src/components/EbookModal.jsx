@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getEbookById } from '../api/ebooks';
 import { useAuth } from '../context/AuthContext';
 import { usePurchase } from '../context/PurchaseContext';
@@ -82,18 +82,20 @@ export default function EbookModal({ book: listBook, onClose }) {
       />
 
       {/* Centered container */}
-      <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6">
+      <div className="absolute inset-0 flex items-center sm:items-start justify-center p-4 sm:p-6 sm:pt-[7dvh]">
         <div className="w-full flex items-center justify-center">
           {/* Modal card */}
           <div
-            className="relative w-full max-w-lg max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-clip animate-modal-content flex flex-col"
+            className="relative w-full max-w-lg h-[85dvh] sm:h-auto sm:max-h-[85dvh] bg-white rounded-2xl shadow-2xl overflow-clip animate-modal-content flex flex-col"
             onClick={(e) => e.stopPropagation()}
             onWheel={handleModalWheel}
           >
             {/* Close button */}
             <button
               onClick={onClose}
-              className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm flex items-center justify-center transition-colors cursor-pointer border-0"
+              type="button"
+              aria-label="Close"
+              className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 z-10 w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 active:bg-white/30 backdrop-blur-sm flex items-center justify-center transition-colors cursor-pointer border-0"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
                 <path d="M18 6L6 18M6 6l12 12" />
@@ -170,7 +172,10 @@ export default function EbookModal({ book: listBook, onClose }) {
                         <img
                           src={b.thumbnail_url}
                           alt={b.title}
-                          className="h-32 sm:h-40 rounded-lg shadow-md object-cover shrink-0"
+                          width="120"
+                          height="160"
+                          decoding="async"
+                          className="h-32 sm:h-40 w-auto aspect-3/4 rounded-lg shadow-md object-contain bg-surface-dim shrink-0"
                         />
                       )}
                       <div className="space-y-2 min-w-0">
@@ -236,6 +241,11 @@ export default function EbookModal({ book: listBook, onClose }) {
 
             {/* Footer CTA */}
             <div className="relative border-t border-border px-5 sm:px-6 md:px-8 py-5 sm:py-6 bg-white shrink-0">
+              {b?.has_sample && !purchased && (
+                <Link to={`/ebooks/${bookId}/sample`} onClick={onClose} className="btn-outline w-full mb-3 py-2.5! no-underline">
+                  Read free sample
+                </Link>
+              )}
               {purchased ? (
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 bg-success/8 rounded-lg flex items-center justify-center shrink-0">

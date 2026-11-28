@@ -53,7 +53,7 @@ export default function TermsGateModal({ open, onClose, onAgree }) {
           <button
             type="button"
             onClick={onClose}
-            className="text-text-tertiary hover:text-text transition-colors p-1 -mr-1"
+            className="inline-flex items-center justify-center w-10 h-10 -mr-2.5 rounded-full text-text-tertiary hover:text-text active:bg-black/5 transition-colors"
             aria-label="Close"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

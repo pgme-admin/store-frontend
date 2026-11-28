@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { getPackages } from '../api/packages';
 import { getFormsBySubject } from '../api/forms';
 import { useSubject } from '../context/SubjectContext';
@@ -10,6 +10,10 @@ import PackageModal from '../components/PackageModal';
 import TierUpgradeModal from '../components/TierUpgradeModal';
 import FormCard from '../components/FormCard';
 import FormModal from '../components/FormModal';
+import PackageKindTabs from '../components/PackageKindTabs';
+import useComboBundles from '../hooks/useComboBundles';
+import { filterByKind } from '../utils/packageTiers';
+import CardSkeletons from '../components/CardSkeletons';
 
 export default function PackageList() {
   const { subjects, subjectId, selectedSubject, selectSubject, selectSubjectBySlug } = useSubject();
@@ -21,6 +25,8 @@ export default function PackageList() {
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [upgradeTarget, setUpgradeTarget] = useState(null);
   const [specialtyOpen, setSpecialtyOpen] = useState(false);
+  const [kind, setKind] = useState('all');
+  const navigate = useNavigate();
   const specialtyRef = useRef(null);
   const formsSectionRef = useRef(null);
 
@@ -90,6 +96,12 @@ export default function PackageList() {
     })();
   }, [subjectId]);
 
+  const bundles = useComboBundles(packages);
+  // A kind that this subject doesn't have falls back to showing everything.
+  const kindFiltered = filterByKind(packages, kind);
+  const shownPackages = kindFiltered.length ? kindFiltered : packages;
+  const activeKind = kindFiltered.length ? kind : 'all';
+
   // Update URL when subject changes (without adding history entries)
   const handleSubjectSelect = (subject) => {
     selectSubject(subject);
@@ -140,7 +152,7 @@ export default function PackageList() {
           <button
             type="button"
             onClick={() => setSpecialtyOpen(!specialtyOpen)}
-            className="w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-4 sm:py-5 bg-[#d6e4ff] rounded-2xl border border-[#d6e4ff] hover:border-primary/30 transition-all duration-200 cursor-pointer text-left"
+            className="w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-4 sm:py-5 bg-[#d6e4ff] rounded-2xl border border-[#d6e4ff] hover:border-primary/30 transition-[color,background-color,border-color,box-shadow,transform] duration-200 cursor-pointer text-left"
           >
             <div className="min-w-0">
               <p className="text-[11px] sm:text-xs font-medium text-text-tertiary uppercase tracking-wider mb-1">Your Specialty</p>
@@ -167,7 +179,7 @@ export default function PackageList() {
                       key={id}
                       type="button"
                       onClick={() => handleSubjectSelect(subject)}
-                      className={`flex items-center gap-3 px-4 py-3 sm:py-3.5 rounded-xl text-left transition-all duration-150 cursor-pointer border ${
+                      className={`flex items-center gap-3 px-4 py-3 sm:py-3.5 rounded-xl text-left transition-[color,background-color,border-color,box-shadow,transform] duration-150 cursor-pointer border ${
                         isActive
                           ? 'bg-primary/5 border-primary/20 text-primary'
                           : 'bg-transparent border-transparent hover:bg-surface-dim text-text-secondary hover:text-text'
@@ -194,9 +206,7 @@ export default function PackageList() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-24">
-          <div className="w-9 h-9 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
-        </div>
+        <CardSkeletons count={3} cover="aspect-video" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5 lg:gap-6 2xl:gap-7" />
       ) : error ? (
         <div className="text-center py-16 text-error text-sm">{error}</div>
       ) : packages.length === 0 && forms.length === 0 ? (
@@ -214,16 +224,25 @@ export default function PackageList() {
         <>
           {/* Packages grid */}
           {packages.length > 0 && (
+            <PackageKindTabs packages={packages} value={activeKind} onChange={setKind} className="mb-5 sm:mb-6" />
+          )}
+          {packages.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5 lg:gap-6 2xl:gap-7">
-              {packages.map((pkg, index) => (
+              {shownPackages.map((pkg, index) => (
                 <PackageCard
                   key={pkg.package_id}
                   pkg={pkg}
                   purchased={pkg.is_purchased || isPackagePurchased(pkg.package_id)}
                   illustrationIndex={index}
+                  bundled={bundles[String(pkg.package_id)]}
                   onClick={() => setSelectedPackage(pkg)}
                   onUpgrade={() =>
                     setUpgradeTarget({ package_id: pkg.package_id, name: pkg.name })
+                  }
+                  onRenew={() =>
+                    navigate(
+                      `/packages/${pkg.package_id}${pkg.current_tier_index != null ? `?tier=${pkg.current_tier_index}` : ''}`
+                    )
                   }
                 />
               ))}

@@ -1,0 +1,28 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["27JJ9L3WUB.com.pgme.app"],
+        "components": [
+          {
+            "?": { "token": "?*" },
+            "exclude": true,
+            "comment": "The app's own hand-off to the web store (one-time login token): always Safari, never back into the app."
+          },
+          {
+            "?": { "open": "web" },
+            "exclude": true,
+            "comment": "A link the app or an email wants opened on the website."
+          },
+          { "/": "/packages", "comment": "All packages" },
+          { "/": "/packages/*", "comment": "A package; ?tier=N and ?intent=renew are passed on" },
+          { "/": "/sessions/*", "comment": "A live session" },
+          { "/": "/workshops", "comment": "All workshops" },
+          { "/": "/workshops/*", "comment": "A workshop" },
+          { "/": "/ebooks", "comment": "The e-book store" },
+          { "/": "/ebooks/*", "comment": "An e-book, or its free sample" }
+        ]
+      }
+    ]
+  }
+}

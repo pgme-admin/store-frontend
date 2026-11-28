@@ -64,7 +64,7 @@ export default function RecommendationRail({
             <Link
               key={`${item.product_type}:${item.product_id}`}
               to={to}
-              className="group flex gap-3 rounded-lg border border-border p-3 no-underline hover:border-primary/40 hover:shadow-sm transition-all"
+              className="group flex gap-3 rounded-lg border border-border p-3 no-underline hover:border-primary/40 hover:shadow-sm transition-[color,background-color,border-color,box-shadow,transform]"
             >
               {item.thumbnail_url ? (
                 <img

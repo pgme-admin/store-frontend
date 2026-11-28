@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { getSessionById, getSessionEnrollmentStatus, enrollInSession } from '../api/sessions';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { getSessionById, getSessionEnrollmentStatus, enrollInSession, sessionAccess, sessionErrorMessage, weeklyInfo, istDay, istTime, durationText } from '../api/sessions';
 import { useAuth } from '../context/AuthContext';
 import { usePurchase } from '../context/PurchaseContext';
 import PriceDisplay from '../components/PriceDisplay';
@@ -25,6 +25,7 @@ export default function SessionDetail() {
         const loaded = result.session || result;
         setSession(loaded);
         if (isAuthenticated && loaded?.enrollment_mode === 'enrollment_required') {
+          // (also tells a subscriber on a restricted session that they are registered)
           try {
             const status = await getSessionEnrollmentStatus(id);
             setIsEnrolled(status?.is_enrolled === true);
@@ -63,11 +64,24 @@ export default function SessionDetail() {
   const purchased = isSessionPurchased(session.session_id || session._id);
 
   const isEnrollmentRequired = session?.enrollment_mode === 'enrollment_required';
+  // Who can join (package subscriptions). Missing fields mean "everyone".
+  const access = sessionAccess(session);
+  const restricted = access.mode !== 'everyone' && !purchased;
+  const forSubscribersOnly = restricted && !access.included && access.mode === 'subscribers_only';
+  const freeForSubscribers = restricted && !access.included && access.mode === 'subscribers_free';
+  const packageHref = access.firstPackageId ? `/packages/${access.firstPackageId}` : '/packages';
+  const startTime = session.scheduled_start_time || session.scheduled_start;
+  // A weekly series: the pattern and the class now or next (null for a one-off)
+  const weekly = weeklyInfo(session);
+  const isLive = session.status === 'live';
+  const facultyName = session.faculty?.name || session.faculty_id?.name;
+  const showCta = !session.is_free || isEnrollmentRequired || access.mode !== 'everyone';
+  const signIn = () => navigate('/login', { state: { from: { pathname: `/sessions/${id}` } } });
 
   const handleBuy = () => {
-    if (session.is_free || purchased) return;
+    if (session.is_free || purchased || access.included || forSubscribersOnly) return;
     if (!isAuthenticated) {
-      navigate('/login', { state: { from: { pathname: `/sessions/${id}` } } });
+      signIn();
       return;
     }
     navigate(`/checkout/sessions/${id}`);
@@ -84,14 +98,17 @@ export default function SessionDetail() {
       await enrollInSession(id);
       setIsEnrolled(true);
     } catch (err) {
-      const msg = err?.response?.data?.message || 'Failed to register. Please try again.';
-      setEnrollError(msg);
+      setEnrollError(sessionErrorMessage(err, 'Failed to register. Please try again.'));
     } finally {
       setIsEnrolling(false);
     }
   };
 
+  // The fixed bars sit outside the animated wrapper: while an entrance
+  // animation runs on transform, it pins position: fixed children to the page,
+  // so the bar showed at the end of the content and then jumped to the bottom.
   return (
+    <>
     <div className="animate-fade-in-up">
       <div className="max-w-5xl 2xl:max-w-6xl mx-auto">
         {/* Header */}
@@ -105,22 +122,44 @@ export default function SessionDetail() {
                 <polygon points="23 7 16 12 23 17 23 7"/>
                 <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
               </svg>
-              <span className="text-sm font-medium text-white/80">Live Session</span>
+              <span className="text-sm font-medium text-white/80">{weekly ? 'Weekly Live Session' : 'Live Session'}</span>
+              {/* LIVE only while a class is actually running */}
+              {isLive && (
+                <span className="ml-1 inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-error">
+                  <span className="w-1.5 h-1.5 rounded-full bg-error" aria-hidden="true" />
+                  Live now
+                </span>
+              )}
             </div>
             <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl 2xl:text-5xl font-bold font-display mb-1">{session.title}</h1>
-            {session.faculty_id?.name && (
-              <p className="text-white/70 text-sm">By {session.faculty_id.name}</p>
+            {facultyName && (
+              <p className="text-white/70 text-sm">By {facultyName}</p>
+            )}
+            {access.mode !== 'everyone' && (
+              <p className="mt-3 inline-flex max-w-full items-start gap-1.5 rounded-2xl bg-white/15 px-3 py-1 text-xs font-semibold leading-snug text-white">
+                <ShieldIcon size={13} className="shrink-0 mt-px" />
+                <span className="min-w-0 break-words">
+                  {access.included
+                    ? `Included with your ${access.viaName} subscription`
+                    : access.mode === 'subscribers_only'
+                      ? `For ${access.names || 'package'} subscribers`
+                      : `Free for ${access.names || 'package'} subscribers`}
+                </span>
+              </p>
             )}
           </div>
         </div>
 
         {/* Thumbnail Banner */}
         {session.thumbnail_url && (
-          <div className="rounded-2xl overflow-hidden mb-6 sm:mb-8">
+          <div className="rounded-2xl overflow-hidden mb-6 sm:mb-8 aspect-video max-h-80 w-full bg-surface-dim">
             <img
               src={session.thumbnail_url}
               alt={session.title}
-              className="w-full h-auto max-h-80 object-cover"
+              width="1280"
+              height="720"
+              decoding="async"
+              className="w-full h-full object-cover"
             />
           </div>
         )}
@@ -138,14 +177,30 @@ export default function SessionDetail() {
                   </svg>
                   <h3 className="text-base font-semibold text-text">Schedule</h3>
                 </div>
-                <div className="space-y-2 text-sm text-text-secondary">
-                  {session.scheduled_start && (
-                    <div>Starts: {formatDate(session.scheduled_start)}</div>
-                  )}
-                  {session.duration_minutes && (
-                    <div>Duration: {session.duration_minutes} minutes</div>
-                  )}
-                </div>
+                {weekly ? (
+                  <div className="space-y-2 text-sm text-text-secondary">
+                    <p className="font-medium text-text break-words">{weekly.label} <span className="text-text-tertiary font-normal">(IST)</span></p>
+                    {weekly.overtimeLabel && <p className="text-xs text-text-tertiary">{weekly.overtimeLabel}</p>}
+                    <p className={weekly.live ? 'font-semibold text-error' : weekly.overtime ? 'font-medium text-text' : ''}>
+                      {weekly.over || weekly.cancelled || weekly.live || weekly.overtime
+                        ? weekly.nextText
+                        : <>Next class: <span className="text-text font-medium">{istDay(weekly.start)}, {istTime(weekly.start)} to {istTime(weekly.end)}</span></>}
+                    </p>
+                    {weekly.overtime && <p className="text-xs">Joining is open in the PGME app until {istTime(session.join_closes_at)}.</p>}
+                    {weekly.classText && <p className="tabular-nums">{weekly.classText}</p>}
+                    {durationText(session.duration_minutes) && <p>Each class: {durationText(session.duration_minutes)}</p>}
+                    <p className="text-xs text-text-tertiary">One registration covers every class.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 text-sm text-text-secondary">
+                    {startTime && (
+                      <div>Starts: {formatDate(startTime)}</div>
+                    )}
+                    {durationText(session.duration_minutes) && (
+                      <div>Duration: {durationText(session.duration_minutes)}</div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Description */}
@@ -178,10 +233,29 @@ export default function SessionDetail() {
           </div>
 
           {/* Sidebar - Desktop sticky CTA */}
-          {(!session.is_free || isEnrollmentRequired) && (
+          {showCta && (
             <div className="hidden lg:block">
               <div className="sticky top-24 bg-white rounded-xl border border-border p-6 shadow-md">
-                {session.is_free && isEnrollmentRequired ? (
+                {access.included && !purchased ? (
+                  <IncludedCard
+                    viaName={access.viaName}
+                    needsRegistration={isEnrollmentRequired}
+                    isEnrolled={isEnrolled}
+                    isEnrolling={isEnrolling}
+                    onEnroll={handleEnroll}
+                    enrollError={enrollError}
+                  />
+                ) : forSubscribersOnly ? (
+                  <>
+                    <h3 className="text-base font-semibold text-text mb-3 pb-2 border-b border-border">For {access.names || 'package'} subscribers</h3>
+                    <p className="text-sm text-text-secondary leading-relaxed">Only subscribers of {access.names || 'the package'} can register for and join this live session. Get the package to join it, along with everything else it includes.</p>
+                    <Link to={packageHref} className="btn-primary w-full mt-5 py-3.5! inline-flex items-center justify-center">View package</Link>
+                    {!isAuthenticated && (
+                      <button type="button" onClick={signIn} className="w-full mt-2 min-h-10 text-sm font-medium text-primary hover:underline cursor-pointer">Already a subscriber? Sign in</button>
+                    )}
+                    {enrollError && <p className="text-xs text-error mt-2 text-center">{enrollError}</p>}
+                  </>
+                ) : session.is_free && isEnrollmentRequired ? (
                   isEnrolled ? (
                     <>
                       <div className="flex items-center gap-2 mb-3">
@@ -229,6 +303,18 @@ export default function SessionDetail() {
                   <>
                     <h3 className="text-base font-semibold text-text mb-4 pb-2 border-b border-border">Purchase Session</h3>
                     <PriceDisplay price={session.price} size="lg" />
+                    {freeForSubscribers && (
+                      <p className="mt-3 flex items-start gap-1.5 text-xs text-text-secondary leading-relaxed">
+                        <ShieldIcon size={13} className="text-success mt-0.5 shrink-0" />
+                        <span>
+                          Free for {access.names || 'package'} subscribers.{' '}
+                          {/* 40px hit area without changing the sentence's line height */}
+                          {isAuthenticated
+                            ? <Link to={packageHref} className="inline-flex items-center min-h-10 -my-2.5 align-middle font-medium text-primary hover:underline">View package</Link>
+                            : <button type="button" onClick={signIn} className="inline-flex items-center min-h-10 -my-2.5 align-middle font-medium text-primary hover:underline cursor-pointer">Sign in to register free</button>}
+                        </span>
+                      </p>
+                    )}
                     <button onClick={handleBuy} className="btn-primary w-full mt-5 !py-3.5">
                       Buy Now
                     </button>
@@ -247,13 +333,39 @@ export default function SessionDetail() {
           className="mt-5 sm:mt-6"
         />
       </div>
+    </div>
 
       {/* Mobile sticky bottom CTA */}
-      {(!session.is_free || isEnrollmentRequired) && (
+      {showCta && (
         <>
-          {session.is_free && isEnrollmentRequired ? (
+          {access.included && !purchased ? (
+            <div data-bottom-bar className="fixed bottom-0 left-0 right-0 glass-strong border-t border-border px-4 pt-4 pb-safe-4 lg:hidden z-40">
+              <div className="max-w-7xl mx-auto flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold leading-snug text-success line-clamp-2">Included with your {access.viaName} subscription</p>
+                  {(!isEnrollmentRequired || isEnrolled) && <p className="mt-0.5 text-xs text-text-secondary line-clamp-2">{isEnrolled ? 'Registered. ' : ''}Open the PGME app to join</p>}
+                </div>
+                {isEnrollmentRequired && !isEnrolled && (
+                  <button onClick={handleEnroll} disabled={isEnrolling} className="btn-primary shrink-0 py-3! px-5 disabled:opacity-60 disabled:cursor-not-allowed">
+                    {isEnrolling ? 'Registering...' : 'Register for Free'}
+                  </button>
+                )}
+              </div>
+              {enrollError && <p className="text-xs text-error mt-1.5 text-center">{enrollError}</p>}
+            </div>
+          ) : forSubscribersOnly ? (
+            <div data-bottom-bar className="fixed bottom-0 left-0 right-0 glass-strong border-t border-border px-4 pt-4 pb-safe-4 lg:hidden z-40">
+              <div className="max-w-7xl mx-auto flex items-center gap-3">
+                <p className="min-w-0 flex-1 text-xs font-semibold text-text leading-snug line-clamp-2">For {access.names || 'package'} subscribers</p>
+                <Link to={packageHref} className="btn-primary shrink-0 py-3! px-5 inline-flex items-center justify-center">View package</Link>
+              </div>
+              {!isAuthenticated && (
+                <button type="button" onClick={signIn} className="flex items-center justify-center min-h-10 mx-auto -mb-2 px-3 text-xs font-medium text-primary cursor-pointer">Already a subscriber? Sign in</button>
+              )}
+            </div>
+          ) : session.is_free && isEnrollmentRequired ? (
             isEnrolled ? (
-              <div className="fixed bottom-0 left-0 right-0 glass-strong border-t border-border p-4 safe-area-inset-bottom lg:hidden z-40">
+              <div data-bottom-bar className="fixed bottom-0 left-0 right-0 glass-strong border-t border-border px-4 pt-4 pb-safe-4 lg:hidden z-40">
                 <div className="max-w-7xl mx-auto flex items-center justify-center gap-2">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-success">
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -263,7 +375,7 @@ export default function SessionDetail() {
                 </div>
               </div>
             ) : (
-              <div className="fixed bottom-0 left-0 right-0 glass-strong border-t border-border p-4 safe-area-inset-bottom lg:hidden z-40">
+              <div data-bottom-bar className="fixed bottom-0 left-0 right-0 glass-strong border-t border-border px-4 pt-4 pb-safe-4 lg:hidden z-40">
                 <div className="max-w-7xl mx-auto flex items-center gap-4">
                   <span className="text-base font-bold text-success shrink-0">FREE</span>
                   <button
@@ -278,7 +390,7 @@ export default function SessionDetail() {
               </div>
             )
           ) : purchased ? (
-            <div className="fixed bottom-0 left-0 right-0 glass-strong border-t border-border p-4 safe-area-inset-bottom lg:hidden z-40">
+            <div data-bottom-bar className="fixed bottom-0 left-0 right-0 glass-strong border-t border-border px-4 pt-4 pb-safe-4 lg:hidden z-40">
               <div className="max-w-7xl mx-auto flex items-center justify-center gap-2">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-success">
                   <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -288,18 +400,61 @@ export default function SessionDetail() {
               </div>
             </div>
           ) : (
-            <div className="fixed bottom-0 left-0 right-0 glass-strong border-t border-border p-4 safe-area-inset-bottom lg:hidden z-40">
+            <div data-bottom-bar className="fixed bottom-0 left-0 right-0 glass-strong border-t border-border px-4 pt-4 pb-safe-4 lg:hidden z-40">
               <div className="max-w-7xl mx-auto flex items-center gap-4">
                 <PriceDisplay price={session.price} size="lg" />
                 <button onClick={handleBuy} className="btn-primary flex-1 py-3!">
                   Buy Now
                 </button>
               </div>
+              {freeForSubscribers && (
+                <p className="max-w-7xl mx-auto mt-1.5 text-center text-xs text-text-secondary line-clamp-2">Free for {access.names || 'package'} subscribers</p>
+              )}
             </div>
           )}
           <div className="h-20 sm:h-24 lg:hidden" />
         </>
       )}
-    </div>
+    </>
+  );
+}
+
+function ShieldIcon({ size = 14, className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <polyline points="9 12 11 14 15 10" />
+    </svg>
+  );
+}
+
+/** A subscriber's seat: included with their package, register free if needed. */
+function IncludedCard({ viaName, needsRegistration, isEnrolled, isEnrolling, onEnroll, enrollError }) {
+  return (
+    <>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center shrink-0">
+          <ShieldIcon size={16} className="text-success" />
+        </div>
+        <span className="text-sm font-semibold text-success">Included with your {viaName} subscription</span>
+      </div>
+      {needsRegistration && !isEnrolled ? (
+        <>
+          <p className="text-xs text-text-secondary leading-relaxed mb-4">No payment needed. Register to save your seat.</p>
+          <button
+            onClick={onEnroll}
+            disabled={isEnrolling}
+            className="btn-primary w-full py-3.5! disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isEnrolling ? 'Registering...' : 'Register for Free'}
+          </button>
+          {enrollError && <p className="text-xs text-error mt-2 text-center">{enrollError}</p>}
+        </>
+      ) : (
+        <p className="text-xs text-text-secondary leading-relaxed">
+          {isEnrolled ? "You're registered. " : ''}Open the PGME app to join when it starts.
+        </p>
+      )}
+    </>
   );
 }

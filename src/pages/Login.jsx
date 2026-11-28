@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { clearSignedOutNotice, peekSignedOutNotice } from '../api/sessionEnd';
 
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.pgme.app';
 const APP_STORE_URL = 'https://apps.apple.com/in/app/pgme-medical-education/id6759380549';
@@ -10,11 +11,20 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showNewUserModal, setShowNewUserModal] = useState(false);
+  // Why the last session ended (admin, another device, the device limit)
+  const [notice] = useState(() => peekSignedOutNotice());
+  useEffect(() => { clearSignedOutNotice(); }, []);
+  // A sign-in refused at the device limit: { maxDevices, devices, resolveToken }
+  const [deviceLimit, setDeviceLimit] = useState(null);
+  const [signingOutId, setSigningOutId] = useState(null);
 
-  const { loginWithOTP } = useAuth();
+  const { loginWithOTP, continueAfterDeviceLimit } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || '/';
+  // Keep the query too: a checkout or package link carries the chosen plan
+  // (?tier=) and must come back with it after sign-in.
+  const fromLoc = location.state?.from;
+  const from = fromLoc?.pathname ? `${fromLoc.pathname}${fromLoc.search || ''}` : '/';
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -32,32 +42,64 @@ export default function Login() {
         navigate(from, { replace: true });
       }
     } catch (err) {
-      setError(err.message || 'Login failed. Please try again.');
+      if (err.deviceLimit) {
+        setDeviceLimit(err.deviceLimit);
+      } else {
+        setError(err.message || 'Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  const signOutAndContinue = async (sessionId) => {
+    if (!deviceLimit || signingOutId) return;
+    setSigningOutId(sessionId);
+    setError('');
+    try {
+      await continueAfterDeviceLimit(deviceLimit.resolveToken, [sessionId]);
+      navigate(from, { replace: true });
+    } catch (err) {
+      if (err.deviceLimit) {
+        setDeviceLimit(err.deviceLimit);
+        setError('There is still no free place. Sign out of one more device.');
+      } else {
+        setDeviceLimit(null);
+        setError(err.ticketExpired ? 'This sign-in has expired. Please sign in again.' : (err.message || 'Login failed. Please try again.'));
+      }
+    } finally {
+      setSigningOutId(null);
+    }
+  };
+
+  const deviceKind = (d) => (d.client === 'web_store' ? 'Web store'
+    : d.device_type === 'iOS' ? 'iPhone or iPad'
+      : d.device_type === 'Android' ? 'Android'
+        : d.device_type === 'Web' ? 'Browser' : 'Device');
+  const lastActive = (iso) => {
+    const t = iso ? new Date(iso) : null;
+    if (!t || Number.isNaN(t.getTime())) return 'Last active: not known';
+    return `Last active ${t.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} IST`;
+  };
+
   return (
-    <div className="min-h-screen bg-[#f5f5f5] flex flex-col">
+    <div className="min-h-dvh bg-[#f5f5f5] flex flex-col">
       {/* Minimal top bar */}
-      <div className="px-6 sm:px-10 py-5 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2.5 no-underline">
-          <div className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center shadow-sm">
-            <img src="/logo.png" alt="PGME" className="w-5 h-5 object-contain" />
-          </div>
+      <div className="px-5 sm:px-10 pt-[max(1rem,env(safe-area-inset-top))] pb-3 sm:py-5 flex items-center justify-between gap-3">
+        <Link to="/" className="flex items-center gap-2.5 min-h-11 no-underline">
+          <img src="/pgme-mark.svg" alt="" aria-hidden="true" width="36" height="36" decoding="async" className="w-9 h-9 shrink-0 rounded-full shadow-sm ring-1 ring-black/5" />
           <span className="text-base sm:text-lg font-bold text-gray-900 font-display tracking-tight">PGME</span>
         </Link>
         <Link
           to="/"
-          className="text-sm font-medium text-gray-500 hover:text-gray-900 no-underline transition-colors"
+          className="inline-flex items-center min-h-11 -mr-2 px-2 text-sm font-medium text-gray-500 hover:text-gray-900 active:text-gray-900 no-underline transition-colors"
         >
           Back to Home
         </Link>
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 pb-16">
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 pb-[calc(4rem+env(safe-area-inset-bottom,0px))]">
         <div className="w-full max-w-[1100px] 2xl:max-w-[1300px] grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 2xl:gap-20 items-center">
 
           {/* Left — Big typography */}
@@ -101,9 +143,7 @@ export default function Login() {
                   <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-white/10" />
                 </div>
                 <div className="relative">
-                  <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center mb-5 shadow-sm">
-                    <img src="/logo.png" alt="PGME" className="w-7 h-7 object-contain" />
-                  </div>
+                  <img src="/pgme-mark.svg" alt="PGME" width="48" height="48" decoding="async" className="w-12 h-12 mb-5 rounded-full shadow-sm" />
                   {/* Mobile heading */}
                   <h1 className="text-2xl sm:text-3xl font-extrabold text-white font-display tracking-tight">Sign In</h1>
                   <p className="text-sm text-white/60 mt-1.5">Enter your phone number to continue</p>
@@ -112,6 +152,51 @@ export default function Login() {
 
               {/* Form */}
               <div className="px-7 sm:px-9 py-7 sm:py-9">
+                {notice && !error && !deviceLimit && (
+                  <div role="status" className="bg-blue-50 text-[#00008a] text-sm px-4 py-3 rounded-xl mb-5 border border-blue-100">
+                    {notice}
+                  </div>
+                )}
+
+                {deviceLimit && (
+                  <div className="mb-5 rounded-xl border border-gray-200 p-4" aria-live="polite">
+                    <p className="text-sm font-semibold text-gray-900">Device limit reached</p>
+                    <p className="text-sm text-gray-500 mt-1 leading-relaxed">
+                      {deviceLimit.maxDevices > 0
+                        ? `Your account can be signed in on ${deviceLimit.maxDevices} ${deviceLimit.maxDevices === 1 ? 'device' : 'devices'} at a time.`
+                        : 'Your account is signed in on the most devices it allows.'}
+                      {' '}Sign out of one to continue here.
+                    </p>
+                    <ul className="mt-3 space-y-2">
+                      {deviceLimit.devices.map((d) => (
+                        <li key={d.session_id} className="flex items-center gap-3 rounded-lg bg-gray-50 px-3 py-2.5">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-gray-900">{d.device_name || 'Unknown device'}</p>
+                            <p className="truncate text-xs text-gray-400">{deviceKind(d)} · {lastActive(d.last_active)}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => signOutAndContinue(d.session_id)}
+                            disabled={!!signingOutId}
+                            aria-label={`Sign out ${d.device_name || 'this device'} and continue`}
+                            className="shrink-0 min-h-10 rounded-lg border border-[#0000C8] px-3 py-1.5 text-xs font-semibold text-[#0000C8] bg-white cursor-pointer active:bg-[#0000C8]/5 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {signingOutId === d.session_id ? 'Signing out...' : 'Sign out'}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <button
+                      type="button"
+                      onClick={() => { setDeviceLimit(null); setError(''); }}
+                      disabled={!!signingOutId}
+                      className="mt-3 w-full min-h-11 py-2.5 text-sm font-medium text-gray-500 bg-transparent border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 active:bg-gray-50"
+                    >
+                      Not now
+                    </button>
+                  </div>
+                )}
+
                 {error && (
                   <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl mb-5 flex items-center gap-2.5 border border-red-100">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
@@ -126,14 +211,17 @@ export default function Login() {
                 <form onSubmit={handleLogin} className="space-y-5">
                   <div>
                     <label className="block text-xs font-semibold text-gray-900 uppercase tracking-wider mb-2.5">Phone Number</label>
-                    <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden focus-within:border-[#0000C8] focus-within:ring-2 focus-within:ring-[#0000C8]/10 bg-white transition-all">
+                    <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden focus-within:border-[#0000C8] focus-within:ring-2 focus-within:ring-[#0000C8]/10 bg-white transition-[border-color,box-shadow]">
                       <span className="px-4 text-gray-400 text-sm font-medium border-r border-gray-200 bg-gray-50 py-3.5 select-none">+91</span>
                       <input
                         type="tel"
+                        inputMode="numeric"
+                        autoComplete="tel-national"
+                        aria-label="Phone number"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                         placeholder="Enter your phone number"
-                        className="flex-1 py-3.5 px-4 text-base bg-transparent text-gray-900 focus:outline-none border-0 placeholder:text-gray-300"
+                        className="flex-1 min-w-0 py-3.5 px-4 text-base bg-transparent text-gray-900 focus:outline-none border-0 placeholder:text-gray-300"
                         autoFocus
                       />
                     </div>
@@ -141,7 +229,7 @@ export default function Login() {
                   <button
                     type="submit"
                     disabled={loading || phone.length !== 10}
-                    className="w-full py-3.5 px-6 text-sm font-semibold text-white bg-[#0000C8] rounded-xl border-0 cursor-pointer transition-all duration-300 hover:bg-[#0000a0] hover:shadow-[0_4px_20px_rgba(0,0,200,0.3)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:bg-[#0000C8]"
+                    className="w-full min-h-12 py-3.5 px-6 text-sm font-semibold text-white bg-[#0000C8] rounded-xl border-0 cursor-pointer transition-[background-color,box-shadow,transform,opacity] duration-300 hover:bg-[#0000a0] hover:shadow-[0_4px_20px_rgba(0,0,200,0.3)] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:bg-[#0000C8] disabled:active:scale-100"
                   >
                     {loading ? (
                       <span className="flex items-center justify-center gap-2">
@@ -184,8 +272,8 @@ export default function Login() {
 
       {/* New User Modal */}
       {showNewUserModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-[max(1rem,env(safe-area-inset-bottom))] animate-modal-backdrop">
+          <div role="dialog" aria-modal="true" aria-label="Account not found" data-lenis-prevent className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-full overflow-y-auto overscroll-contain animate-modal-content">
             {/* Modal header */}
             <div className="bg-[#0000C8] px-7 pt-8 pb-6 relative overflow-hidden">
               <div className="absolute inset-0 opacity-15">
@@ -217,7 +305,7 @@ export default function Login() {
                   href={PLAY_STORE_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-3 w-full py-3.5 px-6 text-sm font-semibold text-white bg-[#0000C8] rounded-xl no-underline transition-all duration-300 hover:bg-[#0000a0] hover:shadow-[0_4px_20px_rgba(0,0,200,0.3)]"
+                  className="flex items-center justify-center gap-3 w-full min-h-12 py-3.5 px-6 text-sm font-semibold text-white bg-[#0000C8] rounded-xl no-underline transition-[background-color,box-shadow,transform] duration-300 hover:bg-[#0000a0] hover:shadow-[0_4px_20px_rgba(0,0,200,0.3)] active:scale-[0.98]"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.199l2.807 1.626a1 1 0 0 1 0 1.732l-2.807 1.626L15.206 12l2.492-2.492zM5.864 2.658L16.8 8.99l-2.302 2.302-8.634-8.634z"/></svg>
                   Download for Android
@@ -226,7 +314,7 @@ export default function Login() {
                   href={APP_STORE_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-3 w-full py-3.5 px-6 text-sm font-semibold text-gray-900 bg-gray-100 rounded-xl no-underline transition-all duration-300 hover:bg-gray-200"
+                  className="flex items-center justify-center gap-3 w-full min-h-12 py-3.5 px-6 text-sm font-semibold text-gray-900 bg-gray-100 rounded-xl no-underline transition-[background-color,transform] duration-300 hover:bg-gray-200 active:scale-[0.98]"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
                   Download for iOS
@@ -235,7 +323,7 @@ export default function Login() {
 
               <button
                 onClick={() => setShowNewUserModal(false)}
-                className="w-full mt-4 py-3 text-sm font-medium text-gray-500 bg-transparent border border-gray-200 rounded-xl cursor-pointer transition-all hover:bg-gray-50 hover:text-gray-700"
+                className="w-full mt-4 min-h-11 py-3 text-sm font-medium text-gray-500 bg-transparent border border-gray-200 rounded-xl cursor-pointer transition-colors hover:bg-gray-50 hover:text-gray-700 active:bg-gray-50"
               >
                 Go Back
               </button>

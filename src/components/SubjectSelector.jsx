@@ -26,7 +26,7 @@ export default function SubjectSelector({ showAll = false, value, onChange }) {
         <button
           type="button"
           onClick={() => handleSelect('')}
-          className={`py-2.5 px-5 sm:px-6 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 ease-in-out cursor-pointer border whitespace-nowrap shrink-0 ${
+          className={`py-2.5 px-5 sm:px-6 rounded-full text-xs sm:text-sm font-medium transition-[color,background-color,border-color,box-shadow,transform] duration-200 ease-in-out cursor-pointer border whitespace-nowrap shrink-0 ${
             !selectedId
               ? 'bg-primary text-white border-primary shadow-sm'
               : 'bg-white text-text-secondary border-border hover:border-primary/30 hover:text-primary hover:bg-primary/3'
@@ -43,7 +43,7 @@ export default function SubjectSelector({ showAll = false, value, onChange }) {
             key={id}
             type="button"
             onClick={() => handleSelect(id)}
-            className={`py-2.5 px-5 sm:px-6 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 ease-in-out cursor-pointer border whitespace-nowrap shrink-0 ${
+            className={`py-2.5 px-5 sm:px-6 rounded-full text-xs sm:text-sm font-medium transition-[color,background-color,border-color,box-shadow,transform] duration-200 ease-in-out cursor-pointer border whitespace-nowrap shrink-0 ${
               isActive
                 ? 'bg-primary text-white border-primary shadow-sm'
                 : 'bg-white text-text-secondary border-border hover:border-primary/30 hover:text-primary hover:bg-primary/3'

@@ -1,22 +1,37 @@
+import { Link } from 'react-router-dom';
 import { formatPrice } from './PriceDisplay';
 
-export default function EbookCard({ book, purchased, illustrationIndex = 0, onClick }) {
+export default function EbookCard({ book, purchased, onClick }) {
   const price = book.effective_price || book.price;
+  const showSample = !!book.has_sample && !purchased;
+  const discount = !purchased && book.is_on_sale && book.original_price && book.original_price > price
+    ? Math.round(((book.original_price - price) / book.original_price) * 100)
+    : null;
+  const discountBadge = (where) => (
+    <span className={`${where} text-[10px] sm:text-xs font-semibold bg-white text-accent-dark px-2 py-0.5 rounded-full shadow-sm`}>
+      {discount}% off
+    </span>
+  );
 
-  return (
+  const card = (
     <button
       type="button"
       onClick={onClick}
-      className="group relative flex flex-col w-full text-left bg-white rounded-2xl border border-border/60 overflow-hidden hover:shadow-lg hover:border-primary/20 transition-all duration-200 cursor-pointer"
+      className="tap-press group relative flex flex-col w-full h-full text-left bg-white rounded-2xl border border-border/60 overflow-hidden hover:shadow-lg hover:border-primary/20 duration-200 cursor-pointer"
     >
       {/* Cover image */}
       <div className="relative bg-surface-dim">
         {book.thumbnail_url ? (
           <div className="aspect-3/4 overflow-hidden">
+            {/* The whole cover, never cropped (a cover's title often runs edge to edge) */}
             <img
               src={book.thumbnail_url}
               alt={book.title}
-              className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
+              width="300"
+              height="400"
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-contain group-hover:scale-[1.03] transition-transform duration-500"
             />
           </div>
         ) : (
@@ -34,11 +49,7 @@ export default function EbookCard({ book, purchased, illustrationIndex = 0, onCl
             Owned
           </span>
         )}
-        {!purchased && book.is_on_sale && book.original_price && book.original_price > price && (
-          <span className="absolute top-2.5 left-2.5 text-[10px] sm:text-xs font-semibold bg-white text-accent-dark px-2 py-0.5 rounded-full shadow-sm">
-            {Math.round(((book.original_price - price) / book.original_price) * 100)}% off
-          </span>
-        )}
+        {discount != null && !showSample && discountBadge('absolute top-2.5 left-2.5')}
       </div>
 
       {/* Content */}
@@ -51,7 +62,7 @@ export default function EbookCard({ book, purchased, illustrationIndex = 0, onCl
         )}
 
         {/* Title */}
-        <h3 className="text-xs sm:text-sm font-semibold text-text group-hover:text-primary transition-colors line-clamp-2 leading-snug mb-1.5">
+        <h3 className="text-xs sm:text-sm font-semibold text-text group-hover:text-primary transition-colors line-clamp-3 leading-snug mb-1.5 break-words">
           {book.title}
         </h3>
 
@@ -87,5 +98,25 @@ export default function EbookCard({ book, purchased, illustrationIndex = 0, onCl
         </div>
       </div>
     </button>
+  );
+  if (!showSample) return card;
+
+  // A link cannot sit inside the card's button, so it is laid over the top of
+  // the cover, where a tap in the middle of the card never reaches it. The
+  // "% off" badge shares its row and wraps instead of colliding on narrow cards.
+  return (
+    <div className="relative flex">
+      {card}
+      <div className="absolute inset-x-0 top-0 flex flex-wrap items-start gap-1.5 p-2 pointer-events-none">
+        {discount != null && discountBadge('mt-0.5 ml-0.5')}
+        <Link
+          to={`/ebooks/${book.book_id}/sample`}
+          aria-label={`Read a free sample of ${book.title}`}
+          className="pointer-events-auto ml-auto min-h-10 px-3 inline-flex items-center justify-center rounded-lg bg-white/95 border border-border text-xs sm:text-sm font-semibold text-primary no-underline shadow-sm hover:bg-white active:bg-white"
+        >
+          Free sample
+        </Link>
+      </div>
+    </div>
   );
 }
